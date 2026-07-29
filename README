@@ -1,1 +1,24 @@
 # Social
+
+Réseau social privé pour un groupe d'amis franco-allemand (façon Discord). Voir
+`doc/SPEC.md` pour la spec produit/archi et `doc/BACKLOG.md` pour le backlog
+d'implémentation.
+
+## Monorepo
+
+Workspaces pnpm :
+
+- `apps/api` — backend (NestJS + Socket.io, à venir en M0-T3)
+- `apps/web` — frontend (Vue 3 + Vite + Vuetify, à venir en M0-T5)
+- `packages/shared` — types TS partagés entre `api` et `web`
+
+## Setup local
+
+Prérequis : Node >= 20, pnpm >= 9.
+
+```
+pnpm install
+```
+
+Installe les dépendances de tous les workspaces d'un coup. `packages/shared`
+est ensuite importable depuis `apps/api` et `apps/web` via `@social/shared`.
