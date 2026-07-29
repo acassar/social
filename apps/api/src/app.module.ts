@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { validateEnv } from './config/env';
 import { HealthModule } from './health/health.module';
+import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { GroupsModule } from './groups/groups.module';
 import { ChannelsModule } from './channels/channels.module';
@@ -15,6 +16,7 @@ import { RealtimeModule } from './realtime/realtime.module';
       isGlobal: true,
       validate: validateEnv,
     }),
+    PrismaModule,
     HealthModule,
     AuthModule,
     GroupsModule,

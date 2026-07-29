@@ -1,6 +1,7 @@
 export interface EnvironmentVariables {
   NODE_ENV: 'development' | 'test' | 'production';
   PORT: number;
+  DATABASE_URL: string;
 }
 
 const VALID_NODE_ENVS: EnvironmentVariables['NODE_ENV'][] = ['development', 'test', 'production'];
@@ -17,5 +18,14 @@ export function validateEnv(rawEnv: Record<string, unknown>): EnvironmentVariabl
     throw new Error(`PORT invalide : "${rawPort}" (attendu un entier positif)`);
   }
 
-  return { NODE_ENV: nodeEnv as EnvironmentVariables['NODE_ENV'], PORT: port };
+  const databaseUrl = rawEnv.DATABASE_URL as string | undefined;
+  if (!databaseUrl) {
+    throw new Error('DATABASE_URL invalide : variable manquante');
+  }
+
+  return {
+    NODE_ENV: nodeEnv as EnvironmentVariables['NODE_ENV'],
+    PORT: port,
+    DATABASE_URL: databaseUrl,
+  };
 }

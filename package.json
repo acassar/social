@@ -12,7 +12,11 @@
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r --if-present run typecheck",
     "build": "pnpm -r --if-present run build",
-    "test": "pnpm -r --if-present run test"
+    "test": "pnpm -r --if-present run test",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:migrate": "pnpm --filter @social/api run prisma:migrate",
+    "db:seed": "pnpm --filter @social/api run prisma:seed"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
