@@ -43,14 +43,33 @@ workspace. ESLint (flat config, `eslint.config.mjs`) et Prettier sont partagés
 ## API (`apps/api`)
 
 ```
-cp .env.example .env
+cp apps/api/.env.example apps/api/.env
 pnpm --filter api start:dev   # démarre l'app NestJS (watch), GET /health -> { status: 'ok' }
 ```
 
-Variables d'environnement (voir `.env.example`) : `NODE_ENV`, `PORT`. Chargées
-et validées via `ConfigModule` (`@nestjs/config`). Structure de modules vide
-prête à accueillir la logique métier : `auth`, `groups`, `channels`, `posts`,
-`reactions`, `realtime`.
+Variables d'environnement (voir `apps/api/.env.example`) : `NODE_ENV`, `PORT`,
+`DATABASE_URL`. Chargées et validées via `ConfigModule` (`@nestjs/config`).
+Structure de modules vide prête à accueillir la logique métier : `auth`,
+`groups`, `channels`, `posts`, `reactions`, `realtime`.
+
+## Base de données (Postgres + Prisma)
+
+Postgres tourne en local via Docker Compose (`docker-compose.yml` à la racine) ;
+l'ORM et les migrations sont gérés par [Prisma](https://www.prisma.io/)
+(`apps/api/prisma/schema.prisma`).
+
+```
+pnpm db:up        # démarre Postgres (docker compose up -d)
+pnpm db:migrate    # applique les migrations Prisma en dev (prisma migrate dev)
+pnpm db:seed       # insère les données de dev (un group + un owner)
+pnpm db:down       # arrête Postgres
+```
+
+Le schéma initial couvre `users`, `groups`, `memberships` et `invites` (le
+reste du modèle — `channels`, `posts`, ... — arrivera avec les migrations des
+tâches qui en ont besoin). Le client Prisma est généré dans
+`apps/api/src/generated/prisma` (non versionné, régénéré via `postinstall`
+— `prisma generate`).
 
 ## Web (`apps/web`)
 

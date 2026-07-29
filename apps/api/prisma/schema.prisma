@@ -1,0 +1,76 @@
+// Prisma schema — M0-T4 : tables users, groups, memberships, invites.
+// Le reste du modèle (channels, posts, ...) sera ajouté par les migrations
+// des tâches qui en ont besoin (M2-T1, M3-T1, ...).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  owner
+  member
+}
+
+enum Lang {
+  fr
+  de
+}
+
+model User {
+  id          String   @id @default(uuid())
+  displayName String   @map("display_name")
+  nativeLang  Lang     @map("native_lang")
+  avatarUrl   String?  @map("avatar_url")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  memberships    Membership[]
+  createdInvites Invite[]     @relation("InviteCreatedBy")
+  usedInvites    Invite[]     @relation("InviteUsedBy")
+
+  @@map("users")
+}
+
+model Group {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  memberships Membership[]
+  invites     Invite[]
+
+  @@map("groups")
+}
+
+model Membership {
+  id      String @id @default(uuid())
+  groupId String @map("group_id")
+  userId  String @map("user_id")
+  role    Role
+
+  group Group @relation(fields: [groupId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@unique([groupId, userId])
+  @@map("memberships")
+}
+
+model Invite {
+  id          String    @id @default(uuid())
+  groupId     String    @map("group_id")
+  code        String    @unique
+  createdById String    @map("created_by")
+  expiresAt   DateTime? @map("expires_at")
+  usedById    String?   @map("used_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  group     Group @relation(fields: [groupId], references: [id])
+  createdBy User  @relation("InviteCreatedBy", fields: [createdById], references: [id])
+  usedBy    User? @relation("InviteUsedBy", fields: [usedById], references: [id])
+
+  @@map("invites")
+}
