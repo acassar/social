@@ -9,7 +9,7 @@ d'implémentation.
 Workspaces pnpm :
 
 - `apps/api` — backend (NestJS + Socket.io)
-- `apps/web` — frontend (Vue 3 + Vite + Vuetify, à venir en M0-T5)
+- `apps/web` — frontend (Vue 3 + Vite + Vuetify)
 - `packages/shared` — types TS partagés entre `api` et `web`
 
 ## Setup local
@@ -51,3 +51,16 @@ Variables d'environnement (voir `.env.example`) : `NODE_ENV`, `PORT`. Chargées
 et validées via `ConfigModule` (`@nestjs/config`). Structure de modules vide
 prête à accueillir la logique métier : `auth`, `groups`, `channels`, `posts`,
 `reactions`, `realtime`.
+
+## Web (`apps/web`)
+
+```
+cp apps/web/.env.example apps/web/.env
+pnpm --filter web dev   # sert l'app Vue sur http://localhost:5173
+```
+
+Vue 3 + Vite + TypeScript + Vuetify (thème sombre par défaut). Router
+(`vue-router`) avec une page publique `/login` et une page protégée `/app`
+(gardée par un guard de navigation minimal — la vraie session arrivera avec
+le store d'auth Pinia en M1-T4). Client HTTP centralisé (`src/lib/http.ts`)
+qui lit l'URL de l'API depuis `VITE_API_URL` (voir `apps/web/.env.example`).
