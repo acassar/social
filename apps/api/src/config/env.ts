@@ -2,6 +2,10 @@ export interface EnvironmentVariables {
   NODE_ENV: 'development' | 'test' | 'production';
   PORT: number;
   DATABASE_URL: string;
+  JWT_ACCESS_SECRET: string;
+  JWT_ACCESS_EXPIRES_IN: string;
+  JWT_REFRESH_SECRET: string;
+  JWT_REFRESH_EXPIRES_IN: string;
 }
 
 const VALID_NODE_ENVS: EnvironmentVariables['NODE_ENV'][] = ['development', 'test', 'production'];
@@ -23,9 +27,26 @@ export function validateEnv(rawEnv: Record<string, unknown>): EnvironmentVariabl
     throw new Error('DATABASE_URL invalide : variable manquante');
   }
 
+  const jwtAccessSecret = rawEnv.JWT_ACCESS_SECRET as string | undefined;
+  if (!jwtAccessSecret) {
+    throw new Error('JWT_ACCESS_SECRET invalide : variable manquante');
+  }
+
+  const jwtRefreshSecret = rawEnv.JWT_REFRESH_SECRET as string | undefined;
+  if (!jwtRefreshSecret) {
+    throw new Error('JWT_REFRESH_SECRET invalide : variable manquante');
+  }
+
+  const jwtAccessExpiresIn = (rawEnv.JWT_ACCESS_EXPIRES_IN as string | undefined) ?? '15m';
+  const jwtRefreshExpiresIn = (rawEnv.JWT_REFRESH_EXPIRES_IN as string | undefined) ?? '30d';
+
   return {
     NODE_ENV: nodeEnv as EnvironmentVariables['NODE_ENV'],
     PORT: port,
     DATABASE_URL: databaseUrl,
+    JWT_ACCESS_SECRET: jwtAccessSecret,
+    JWT_ACCESS_EXPIRES_IN: jwtAccessExpiresIn,
+    JWT_REFRESH_SECRET: jwtRefreshSecret,
+    JWT_REFRESH_EXPIRES_IN: jwtRefreshExpiresIn,
   };
 }
