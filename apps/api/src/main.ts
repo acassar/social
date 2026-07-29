@@ -1,4 +1,14 @@
-import { SHARED_PACKAGE_NAME } from '@social/shared';
+import 'reflect-metadata';
+import { NestFactory } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
+import { AppModule } from './app.module';
+import type { EnvironmentVariables } from './config/env';
 
-// Placeholder entry point — the real NestJS app is scaffolded in M0-T3.
-console.log(`api scaffold OK, linked to ${SHARED_PACKAGE_NAME}`);
+async function bootstrap(): Promise<void> {
+  const app = await NestFactory.create(AppModule);
+  const configService = app.get(ConfigService<EnvironmentVariables, true>);
+  const port = configService.get('PORT', { infer: true });
+  await app.listen(port);
+}
+
+bootstrap();

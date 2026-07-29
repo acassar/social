@@ -8,7 +8,7 @@ d'implémentation.
 
 Workspaces pnpm :
 
-- `apps/api` — backend (NestJS + Socket.io, à venir en M0-T3)
+- `apps/api` — backend (NestJS + Socket.io)
 - `apps/web` — frontend (Vue 3 + Vite + Vuetify, à venir en M0-T5)
 - `packages/shared` — types TS partagés entre `api` et `web`
 
@@ -39,3 +39,15 @@ pnpm build         # tsc dans chaque workspace
 Config TypeScript commune dans `tsconfig.base.json`, étendue par chaque
 workspace. ESLint (flat config, `eslint.config.mjs`) et Prettier sont partagés
 à la racine.
+
+## API (`apps/api`)
+
+```
+cp .env.example .env
+pnpm --filter api start:dev   # démarre l'app NestJS (watch), GET /health -> { status: 'ok' }
+```
+
+Variables d'environnement (voir `.env.example`) : `NODE_ENV`, `PORT`. Chargées
+et validées via `ConfigModule` (`@nestjs/config`). Structure de modules vide
+prête à accueillir la logique métier : `auth`, `groups`, `channels`, `posts`,
+`reactions`, `realtime`.
