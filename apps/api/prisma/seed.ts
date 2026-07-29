@@ -1,5 +1,6 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client.js';
+import { hashPassword } from '../src/auth/password';
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
@@ -21,6 +22,8 @@ async function main(): Promise<void> {
       id: '00000000-0000-0000-0000-000000000002',
       displayName: 'Dev Owner',
       nativeLang: 'fr',
+      // Dev only : seed local, jamais utilisé en prod.
+      passwordHash: await hashPassword('devpassword'),
     },
   });
 
@@ -34,7 +37,9 @@ async function main(): Promise<void> {
     },
   });
 
-  console.log(`Seed OK : group "${group.name}" (${group.id}), owner "${owner.displayName}" (${owner.id})`);
+  console.log(
+    `Seed OK : group "${group.name}" (${group.id}), owner "${owner.displayName}" (${owner.id})`,
+  );
 }
 
 main()

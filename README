@@ -49,8 +49,16 @@ pnpm --filter api start:dev   # démarre l'app NestJS (watch), GET /health -> { 
 
 Variables d'environnement (voir `apps/api/.env.example`) : `NODE_ENV`, `PORT`,
 `DATABASE_URL`. Chargées et validées via `ConfigModule` (`@nestjs/config`).
-Structure de modules vide prête à accueillir la logique métier : `auth`,
-`groups`, `channels`, `posts`, `reactions`, `realtime`.
+Structure de modules vide prête à accueillir la logique métier : `groups`,
+`channels`, `posts`, `reactions`, `realtime`.
+
+### Auth
+
+- `POST /auth/register` — `{ inviteCode, displayName, nativeLang, password }` →
+  valide le code d'invitation, crée le `user` (mot de passe hashé via
+  bcryptjs) et sa `membership` dans le group de l'invite, marque l'invite
+  comme utilisée. Réponses : `201` (compte créé), `400` (code invalide ou
+  expiré, payload invalide), `409` (code déjà utilisé).
 
 ## Base de données (Postgres + Prisma)
 

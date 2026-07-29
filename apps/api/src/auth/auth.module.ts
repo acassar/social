@@ -1,5 +1,10 @@
 import { Module } from '@nestjs/common';
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
 
-// Squelette vide — implémenté en M1 (inscription, login, JWT).
-@Module({})
+// Login/JWT/refresh (M1-T2) et guard/@CurrentUser() arriveront ici ensuite.
+@Module({
+  controllers: [AuthController],
+  providers: [AuthService],
+})
 export class AuthModule {}
