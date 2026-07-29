@@ -9,7 +9,7 @@ d'implémentation.
 Workspaces pnpm :
 
 - `apps/api` — backend (NestJS + Socket.io)
-- `apps/web` — frontend (Vue 3 + Vite + Vuetify, à venir en M0-T5)
+- `apps/web` — frontend (Vue 3 + Vite + Vuetify)
 - `packages/shared` — types TS partagés entre `api` et `web`
 
 ## Setup local
@@ -70,3 +70,16 @@ reste du modèle — `channels`, `posts`, ... — arrivera avec les migrations d
 tâches qui en ont besoin). Le client Prisma est généré dans
 `apps/api/src/generated/prisma` (non versionné, régénéré via `postinstall`
 — `prisma generate`).
+
+## Web (`apps/web`)
+
+```
+cp apps/web/.env.example apps/web/.env
+pnpm --filter web dev   # sert l'app Vue sur http://localhost:5173
+```
+
+Vue 3 + Vite + TypeScript + Vuetify (thème sombre par défaut). Router
+(`vue-router`) avec une page publique `/login` et une page protégée `/app`
+(gardée par un guard de navigation minimal — la vraie session arrivera avec
+le store d'auth Pinia en M1-T4). Client HTTP centralisé (`src/lib/http.ts`)
+qui lit l'URL de l'API depuis `VITE_API_URL` (voir `apps/web/.env.example`).

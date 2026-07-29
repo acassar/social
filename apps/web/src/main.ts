@@ -1,4 +1,6 @@
-import { SHARED_PACKAGE_NAME } from '@social/shared';
+import { createApp } from 'vue';
+import App from './App.vue';
+import { router } from './router';
+import { vuetify } from './plugins/vuetify';
 
-// Placeholder entry point — the real Vue app is scaffolded in M0-T5.
-console.log(`web scaffold OK, linked to ${SHARED_PACKAGE_NAME}`);
+createApp(App).use(router).use(vuetify).mount('#app');
