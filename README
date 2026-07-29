@@ -22,3 +22,20 @@ pnpm install
 
 Installe les dépendances de tous les workspaces d'un coup. `packages/shared`
 est ensuite importable depuis `apps/api` et `apps/web` via `@social/shared`.
+
+## Outillage qualité
+
+Scripts racine (délèguent aux workspaces qui les implémentent) :
+
+```
+pnpm lint          # ESLint sur tout le repo
+pnpm format        # Prettier --write sur tout le repo
+pnpm format:check  # Prettier --check (utilisé en CI)
+pnpm typecheck     # tsc --noEmit dans chaque workspace
+pnpm test          # Vitest (web) / Jest (api)
+pnpm build         # tsc dans chaque workspace
+```
+
+Config TypeScript commune dans `tsconfig.base.json`, étendue par chaque
+workspace. ESLint (flat config, `eslint.config.mjs`) et Prettier sont partagés
+à la racine.
