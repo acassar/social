@@ -1,6 +1,6 @@
-// Prisma schema — M0-T4 : tables users, groups, memberships, invites.
-// Le reste du modèle (channels, posts, ...) sera ajouté par les migrations
-// des tâches qui en ont besoin (M2-T1, M3-T1, ...).
+// Prisma schema — M0-T4 (users, groups, memberships, invites) + M2-T1 (channels).
+// Le reste du modèle (posts, ...) sera ajouté par les migrations des tâches
+// qui en ont besoin (M3-T1, ...).
 
 generator client {
   provider = "prisma-client"
@@ -19,6 +19,12 @@ enum Role {
 enum Lang {
   fr
   de
+}
+
+enum ChannelType {
+  text
+  word_of_day
+  memes
 }
 
 model User {
@@ -43,6 +49,7 @@ model Group {
 
   memberships Membership[]
   invites     Invite[]
+  channels    Channel[]
 
   @@map("groups")
 }
@@ -74,4 +81,17 @@ model Invite {
   usedBy    User? @relation("InviteUsedBy", fields: [usedById], references: [id])
 
   @@map("invites")
+}
+
+model Channel {
+  id        String      @id @default(uuid())
+  groupId   String      @map("group_id")
+  name      String
+  type      ChannelType
+  position  Int
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  group Group @relation(fields: [groupId], references: [id])
+
+  @@map("channels")
 }

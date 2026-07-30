@@ -89,6 +89,27 @@ group ciblé par le paramètre de route `:id`.
 `@CurrentUser()` (`apps/api/src/auth/current-user.decorator.ts`) sont
 réutilisables par les futurs modules protégés (groups, channels, ...).
 
+### Salons (channels)
+
+- `GET /groups/:id/channels` — liste les salons du group `:id`, triés par
+  `position`. Ouvert à tout membre du group (`GroupMemberGuard`) : `401` sans
+  token, `403` pour un non-membre.
+- `POST /groups/:id/channels` — `{ name, type, position }` (`type` ∈ `text`,
+  `word_of_day`, `memes`, validé contre l'enum partagé `@social/shared`) →
+  crée un salon. Réservé au `owner` du group (`GroupOwnerGuard`) : `403` pour
+  un membre non-owner.
+- `PATCH /groups/:id/channels/:channelId` — `{ name?, type?, position? }` →
+  met à jour un salon. Réservé au `owner`. `404` si le salon n'existe pas ou
+  n'appartient pas au group `:id`.
+- `DELETE /groups/:id/channels/:channelId` — supprime un salon. Réservé au
+  `owner`. Mêmes règles de garde que `PATCH`.
+
+`GroupMemberGuard` (`apps/api/src/groups/group-member.guard.ts`) s'utilise
+après `JwtAuthGuard` : il vérifie que le user courant a une `membership`
+(quel que soit son rôle) sur le group ciblé par `:id` — moins strict que
+`GroupOwnerGuard`. Les deux guards sont exportés par `GroupsModule` et
+réutilisés par `ChannelsModule`.
+
 ## Base de données (Postgres + Prisma)
 
 Postgres tourne en local via Docker Compose (`docker-compose.yml` à la racine) ;
