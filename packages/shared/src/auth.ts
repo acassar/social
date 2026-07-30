@@ -37,4 +37,5 @@ export interface MeResponseDto {
   displayName: string;
   nativeLang: NativeLang;
   avatarUrl?: string;
+  groupId: string;
 }
