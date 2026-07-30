@@ -1,6 +1,6 @@
-// Prisma schema — M0-T4 (users, groups, memberships, invites) + M2-T1 (channels).
-// Le reste du modèle (posts, ...) sera ajouté par les migrations des tâches
-// qui en ont besoin (M3-T1, ...).
+// Prisma schema — M0-T4 (users, groups, memberships, invites) + M2-T1 (channels)
+// + M3-T1 (posts, text_messages). Le reste du modèle (reactions, word_entries,
+// attachments) sera ajouté par les migrations des tâches qui en ont besoin.
 
 generator client {
   provider = "prisma-client"
@@ -38,6 +38,7 @@ model User {
   memberships    Membership[]
   createdInvites Invite[]     @relation("InviteCreatedBy")
   usedInvites    Invite[]     @relation("InviteUsedBy")
+  posts          Post[]
 
   @@map("users")
 }
@@ -92,6 +93,33 @@ model Channel {
   createdAt DateTime    @default(now()) @map("created_at")
 
   group Group @relation(fields: [groupId], references: [id])
+  posts Post[]
 
   @@map("channels")
+}
+
+model Post {
+  id        String      @id @default(uuid())
+  channelId String      @map("channel_id")
+  authorId  String      @map("author_id")
+  type      ChannelType
+  createdAt DateTime    @default(now()) @map("created_at")
+  editedAt  DateTime?   @map("edited_at")
+  deletedAt DateTime?   @map("deleted_at")
+
+  channel     Channel      @relation(fields: [channelId], references: [id])
+  author      User         @relation(fields: [authorId], references: [id])
+  textMessage TextMessage?
+
+  @@index([channelId, createdAt])
+  @@map("posts")
+}
+
+model TextMessage {
+  postId String @id @map("post_id")
+  body   String
+
+  post Post @relation(fields: [postId], references: [id])
+
+  @@map("text_messages")
 }

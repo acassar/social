@@ -1,5 +1,14 @@
 import { Module } from '@nestjs/common';
+import { ChannelsModule } from '../channels/channels.module';
+import { RealtimeModule } from '../realtime/realtime.module';
+import { PostsController } from './posts.controller';
+import { PostsService } from './posts.service';
 
-// Squelette vide — implémenté en M3+ (posts texte, mot du jour, mèmes).
-@Module({})
+// Messages texte (M3-T1). Les types `word_of_day`/`memes` étendront ce
+// module (M4-T1, M5-T2).
+@Module({
+  imports: [ChannelsModule, RealtimeModule],
+  controllers: [PostsController],
+  providers: [PostsService],
+})
 export class PostsModule {}
