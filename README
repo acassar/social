@@ -120,8 +120,19 @@ token invalide/expiré, est déconnecté (`exception` émis puis
 `socket.disconnect()`). À la connexion, le client rejoint automatiquement une
 room `channel:{id}` par salon des groups dont il est membre — ces rooms sont
 recalculées à chaque connexion, donc une reconnexion rejoint naturellement les
-bonnes rooms sans état à persister côté serveur. Aucun contrat d'événements
-métier pour l'instant (`post:created`, ... arrivera avec M2-T3).
+bonnes rooms sans état à persister côté serveur.
+
+Contrat d'événements temps réel (types partagés dans
+`packages/shared/src/realtime-events.ts`) : `post:created`, `post:updated`,
+`post:deleted`, `reaction:added`, `reaction:removed`, `presence:update`.
+Émetteur central (`RealtimeEventsService`,
+`apps/api/src/realtime/realtime-events.service.ts`, exporté par
+`RealtimeModule`) : les modules métier l'appellent après écriture
+(`emitPostCreated`, `emitReactionAdded`, ...) pour diffuser vers la room du
+salon concerné — le gateway ne fait que router la connexion (join des rooms),
+aucune logique métier n'y vit. `presence:update` n'a pour l'instant qu'un
+type de payload défini (pas de room group dédiée : la présence est listée en
+« Backlog différé » dans `doc/BACKLOG.md`).
 
 ## Base de données (Postgres + Prisma)
 
