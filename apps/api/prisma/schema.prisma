@@ -23,7 +23,7 @@ enum Lang {
 
 model User {
   id          String   @id @default(uuid())
-  displayName  String   @map("display_name")
+  displayName  String   @unique @map("display_name")
   nativeLang   Lang     @map("native_lang")
   passwordHash String   @map("password_hash")
   avatarUrl    String?  @map("avatar_url")
