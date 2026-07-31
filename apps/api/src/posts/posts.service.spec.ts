@@ -2,12 +2,14 @@ jest.mock('../prisma/prisma.service', () => ({ PrismaService: class {} }));
 
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { PrismaService } from '../prisma/prisma.service';
+import type { PushService } from '../push/push.service';
 import type { RealtimeEventsService } from '../realtime/realtime-events.service';
 import { PostsService } from './posts.service';
 
 function createService(
   prismaMock: Record<string, unknown>,
   realtimeMock: Partial<RealtimeEventsService> = {},
+  pushMock: Partial<PushService> = {},
 ): PostsService {
   return new PostsService(
     prismaMock as unknown as PrismaService,
@@ -17,6 +19,10 @@ function createService(
       emitPostDeleted: jest.fn(),
       ...realtimeMock,
     } as unknown as RealtimeEventsService,
+    {
+      notifyChannelPost: jest.fn(),
+      ...pushMock,
+    } as unknown as PushService,
   );
 }
 
@@ -44,7 +50,12 @@ const WORD_ENTRY_POST_ROW = {
   editedAt: null,
   deletedAt: null,
   textMessage: null,
-  wordEntry: { term: 'Feierabend', lang: 'de', translation: 'fin de journée de travail', note: null },
+  wordEntry: {
+    term: 'Feierabend',
+    lang: 'de',
+    translation: 'fin de journée de travail',
+    note: null,
+  },
   attachments: [],
 };
 
@@ -59,7 +70,13 @@ const MEME_POST_ROW = {
   textMessage: null,
   wordEntry: null,
   attachments: [
-    { url: '/uploads/abc.webp', thumbUrl: '/uploads/abc-thumb.webp', mime: 'image/webp', width: 800, height: 600 },
+    {
+      url: '/uploads/abc.webp',
+      thumbUrl: '/uploads/abc-thumb.webp',
+      mime: 'image/webp',
+      width: 800,
+      height: 600,
+    },
   ],
 };
 
@@ -119,14 +136,11 @@ describe('PostsService.create — salon text', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(create).not.toHaveBeenCalled();
   });
-
 });
 
 describe('PostsService.create — salon word_of_day (M4-T1)', () => {
   it('crée une entrée de mot, la diffuse en direct et la renvoie', async () => {
-    const findUniqueChannel = jest
-      .fn()
-      .mockResolvedValue({ id: 'channel-2', type: 'word_of_day' });
+    const findUniqueChannel = jest.fn().mockResolvedValue({ id: 'channel-2', type: 'word_of_day' });
     const create = jest.fn().mockResolvedValue(WORD_ENTRY_POST_ROW);
     const emitPostCreated = jest.fn();
     const prismaMock = { channel: { findUnique: findUniqueChannel }, post: { create } };
@@ -170,15 +184,11 @@ describe('PostsService.create — salon word_of_day (M4-T1)', () => {
   });
 
   it('transmet la note optionnelle quand elle est fournie', async () => {
-    const findUniqueChannel = jest
-      .fn()
-      .mockResolvedValue({ id: 'channel-2', type: 'word_of_day' });
-    const create = jest
-      .fn()
-      .mockResolvedValue({
-        ...WORD_ENTRY_POST_ROW,
-        wordEntry: { ...WORD_ENTRY_POST_ROW.wordEntry, note: 'entendu au bureau' },
-      });
+    const findUniqueChannel = jest.fn().mockResolvedValue({ id: 'channel-2', type: 'word_of_day' });
+    const create = jest.fn().mockResolvedValue({
+      ...WORD_ENTRY_POST_ROW,
+      wordEntry: { ...WORD_ENTRY_POST_ROW.wordEntry, note: 'entendu au bureau' },
+    });
     const prismaMock = { channel: { findUnique: findUniqueChannel }, post: { create } };
 
     await createService(prismaMock).create('channel-2', 'user-1', {
@@ -202,9 +212,7 @@ describe('PostsService.create — salon word_of_day (M4-T1)', () => {
     ['lang manquant', { term: 'x', translation: 'x' }],
     ['translation manquante', { term: 'x', lang: 'de' as const }],
   ])('rejette (400) une entrée incomplète : %s', async (_label, dto) => {
-    const findUniqueChannel = jest
-      .fn()
-      .mockResolvedValue({ id: 'channel-2', type: 'word_of_day' });
+    const findUniqueChannel = jest.fn().mockResolvedValue({ id: 'channel-2', type: 'word_of_day' });
     const create = jest.fn();
     const prismaMock = { channel: { findUnique: findUniqueChannel }, post: { create } };
 

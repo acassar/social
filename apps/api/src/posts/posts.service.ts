@@ -4,9 +4,16 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { NativeLang, PostDto, PostsPageDto, TextPostDto, UpdateTextPostRequestDto } from '@social/shared';
+import type {
+  NativeLang,
+  PostDto,
+  PostsPageDto,
+  TextPostDto,
+  UpdateTextPostRequestDto,
+} from '@social/shared';
 import type { CreatePostDto } from './dto/create-post.dto';
 import { PrismaService } from '../prisma/prisma.service';
+import { PushService } from '../push/push.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
 
 interface PostRow {
@@ -35,7 +42,15 @@ export class PostsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtimeEvents: RealtimeEventsService,
+    private readonly pushService: PushService,
   ) {}
+
+  // Fire-and-forget : PushService ne rejette jamais (elle catch en interne),
+  // mais on ne veut de toute façon jamais bloquer/faire échouer la création
+  // d'un post à cause de l'envoi de notifications.
+  private notifyChannelPost(channelId: string, authorId: string, post: PostDto): void {
+    void this.pushService.notifyChannelPost(channelId, authorId, post);
+  }
 
   async create(channelId: string, authorId: string, dto: CreatePostDto): Promise<PostDto> {
     const channel = await this.prisma.channel.findUnique({ where: { id: channelId } });
@@ -53,6 +68,7 @@ export class PostsService {
       });
       const result = this.toDto(post);
       this.realtimeEvents.emitPostCreated(channelId, { post: result });
+      this.notifyChannelPost(channelId, authorId, result);
       return result;
     }
 
@@ -80,6 +96,7 @@ export class PostsService {
       });
       const result = this.toDto(post);
       this.realtimeEvents.emitPostCreated(channelId, { post: result });
+      this.notifyChannelPost(channelId, authorId, result);
       return result;
     }
 
@@ -107,6 +124,7 @@ export class PostsService {
       });
       const result = this.toDto(post);
       this.realtimeEvents.emitPostCreated(channelId, { post: result });
+      this.notifyChannelPost(channelId, authorId, result);
       return result;
     }
 

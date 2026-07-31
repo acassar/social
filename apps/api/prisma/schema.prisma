@@ -1,6 +1,6 @@
 // Prisma schema — M0-T4 (users, groups, memberships, invites) + M2-T1 (channels)
 // + M3-T1 (posts, text_messages) + M3-T2 (reactions) + M4-T1 (word_entries)
-// + M5-T1 (attachments).
+// + M5-T1 (attachments) + M6-T2 (push_subscriptions, channel_notification_preferences).
 
 generator client {
   provider = "prisma-client"
@@ -28,18 +28,20 @@ enum ChannelType {
 }
 
 model User {
-  id          String   @id @default(uuid())
+  id           String   @id @default(uuid())
   displayName  String   @unique @map("display_name")
   nativeLang   Lang     @map("native_lang")
   passwordHash String   @map("password_hash")
   avatarUrl    String?  @map("avatar_url")
-  createdAt   DateTime @default(now()) @map("created_at")
+  createdAt    DateTime @default(now()) @map("created_at")
 
-  memberships    Membership[]
-  createdInvites Invite[]     @relation("InviteCreatedBy")
-  usedInvites    Invite[]     @relation("InviteUsedBy")
-  posts          Post[]
-  reactions      Reaction[]
+  memberships              Membership[]
+  createdInvites           Invite[]                        @relation("InviteCreatedBy")
+  usedInvites              Invite[]                        @relation("InviteUsedBy")
+  posts                    Post[]
+  reactions                Reaction[]
+  pushSubscriptions        PushSubscription[]
+  channelNotificationPrefs ChannelNotificationPreference[]
 
   @@map("users")
 }
@@ -93,8 +95,9 @@ model Channel {
   position  Int
   createdAt DateTime    @default(now()) @map("created_at")
 
-  group Group @relation(fields: [groupId], references: [id])
-  posts Post[]
+  group                   Group                           @relation(fields: [groupId], references: [id])
+  posts                   Post[]
+  notificationPreferences ChannelNotificationPreference[]
 
   @@map("channels")
 }
@@ -167,4 +170,38 @@ model Attachment {
   post Post @relation(fields: [postId], references: [id])
 
   @@map("attachments")
+}
+
+// M6-T2 : abonnement Push du navigateur (un par appareil/navigateur ayant
+// accepté les notifications), indépendant des salons — un même abonnement
+// sert à recevoir les notifs de tous les salons pour lesquels le user a
+// activé ChannelNotificationPreference ci-dessous.
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("push_subscriptions")
+}
+
+// M6-T2 : réglage d'opt-in par salon (désactivé par défaut, jamais de
+// forcing — voir doc/SPEC.md §8/§9). La présence d'une ligne vaut opt-in ;
+// la supprimer désactive les notifs pour ce salon, sans toucher à
+// l'abonnement Push lui-même (potentiellement utilisé par d'autres salons).
+model ChannelNotificationPreference {
+  id        String   @id @default(uuid())
+  channelId String   @map("channel_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  channel Channel @relation(fields: [channelId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([channelId, userId])
+  @@map("channel_notification_preferences")
 }
