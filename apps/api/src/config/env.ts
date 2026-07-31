@@ -6,6 +6,7 @@ export interface EnvironmentVariables {
   JWT_ACCESS_EXPIRES_IN: string;
   JWT_REFRESH_SECRET: string;
   JWT_REFRESH_EXPIRES_IN: string;
+  UPLOADS_DIR: string;
 }
 
 const VALID_NODE_ENVS: EnvironmentVariables['NODE_ENV'][] = ['development', 'test', 'production'];
@@ -40,6 +41,11 @@ export function validateEnv(rawEnv: Record<string, unknown>): EnvironmentVariabl
   const jwtAccessExpiresIn = (rawEnv.JWT_ACCESS_EXPIRES_IN as string | undefined) ?? '15m';
   const jwtRefreshExpiresIn = (rawEnv.JWT_REFRESH_EXPIRES_IN as string | undefined) ?? '30d';
 
+  // Dossier local où sont écrits les fichiers uploadés (M5-T1). En prod, ce
+  // dossier vit sur un volume du VPS servi statiquement par le reverse
+  // proxy sous /uploads (cf. doc/BACKLOG.md M5-T1/M7-T2).
+  const uploadsDir = (rawEnv.UPLOADS_DIR as string | undefined) ?? './uploads';
+
   return {
     NODE_ENV: nodeEnv as EnvironmentVariables['NODE_ENV'],
     PORT: port,
@@ -48,5 +54,6 @@ export function validateEnv(rawEnv: Record<string, unknown>): EnvironmentVariabl
     JWT_ACCESS_EXPIRES_IN: jwtAccessExpiresIn,
     JWT_REFRESH_SECRET: jwtRefreshSecret,
     JWT_REFRESH_EXPIRES_IN: jwtRefreshExpiresIn,
+    UPLOADS_DIR: uploadsDir,
   };
 }

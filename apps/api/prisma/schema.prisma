@@ -1,7 +1,6 @@
 // Prisma schema — M0-T4 (users, groups, memberships, invites) + M2-T1 (channels)
-// + M3-T1 (posts, text_messages) + M3-T2 (reactions) + M4-T1 (word_entries).
-// Le reste du modèle (attachments) sera ajouté par les migrations des tâches
-// qui en ont besoin.
+// + M3-T1 (posts, text_messages) + M3-T2 (reactions) + M4-T1 (word_entries)
+// + M5-T1 (attachments).
 
 generator client {
   provider = "prisma-client"
@@ -114,6 +113,7 @@ model Post {
   textMessage TextMessage?
   wordEntry   WordEntry?
   reactions   Reaction[]
+  attachments Attachment[]
 
   @@index([channelId, createdAt])
   @@map("posts")
@@ -151,4 +151,20 @@ model Reaction {
 
   @@unique([postId, userId, emoji])
   @@map("reactions")
+}
+
+// M5-T1 : table de stockage créée par avance ; non écrite tant que M5-T2
+// (post de type `memes`) ne relie pas un fichier uploadé à un post.
+model Attachment {
+  id       String  @id @default(uuid())
+  postId   String  @map("post_id")
+  url      String
+  thumbUrl String? @map("thumb_url")
+  mime     String
+  width    Int?
+  height   Int?
+
+  post Post @relation(fields: [postId], references: [id])
+
+  @@map("attachments")
 }

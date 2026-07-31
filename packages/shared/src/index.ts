@@ -5,5 +5,6 @@ export * from './invites';
 export * from './channels';
 export * from './posts';
 export * from './glossary';
+export * from './uploads';
 export * from './reactions';
 export * from './realtime-events';

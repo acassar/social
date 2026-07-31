@@ -15,6 +15,7 @@ describe('validateEnv', () => {
       JWT_ACCESS_EXPIRES_IN: '15m',
       JWT_REFRESH_SECRET,
       JWT_REFRESH_EXPIRES_IN: '30d',
+      UPLOADS_DIR: './uploads',
     });
   });
 
@@ -26,6 +27,7 @@ describe('validateEnv', () => {
         PORT: '4000',
         JWT_ACCESS_EXPIRES_IN: '5m',
         JWT_REFRESH_EXPIRES_IN: '7d',
+        UPLOADS_DIR: '/var/data/uploads',
       }),
     ).toEqual({
       NODE_ENV: 'production',
@@ -35,6 +37,7 @@ describe('validateEnv', () => {
       JWT_ACCESS_EXPIRES_IN: '5m',
       JWT_REFRESH_SECRET,
       JWT_REFRESH_EXPIRES_IN: '7d',
+      UPLOADS_DIR: '/var/data/uploads',
     });
   });
 
