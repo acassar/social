@@ -1,20 +1,82 @@
+import type { AccessTokenDto } from '@social/shared';
+import { clearTokens, getAccessToken, getRefreshToken, setTokens } from './auth';
+
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
 export interface HttpRequestOptions extends Omit<RequestInit, 'body'> {
   body?: unknown;
+  /** Skip attaching the access token / attempting a refresh-on-401 (login, register, refresh itself). */
+  skipAuth?: boolean;
 }
 
-async function request<T>(path: string, options: HttpRequestOptions = {}): Promise<T> {
-  const { body, headers, ...rest } = options;
+async function rawFetch(path: string, options: HttpRequestOptions): Promise<Response> {
+  const { body, headers, skipAuth, ...rest } = options;
+  const authHeaders: HeadersInit = {};
+  const token = !skipAuth ? getAccessToken() : null;
+  if (token) {
+    authHeaders.Authorization = `Bearer ${token}`;
+  }
 
-  const response = await fetch(`${API_URL}${path}`, {
+  return fetch(`${API_URL}${path}`, {
     ...rest,
     headers: {
       'Content-Type': 'application/json',
+      ...authHeaders,
       ...headers,
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+}
+
+let refreshInFlight: Promise<string | null> | null = null;
+
+// Un seul refresh en vol à la fois, même si plusieurs requêtes prennent un 401 en même temps.
+function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) {
+    return Promise.resolve(null);
+  }
+
+  if (!refreshInFlight) {
+    refreshInFlight = (async () => {
+      try {
+        const response = await rawFetch('/auth/refresh', {
+          method: 'POST',
+          body: { refreshToken },
+          skipAuth: true,
+        });
+        if (!response.ok) {
+          clearTokens();
+          return null;
+        }
+        const data = (await response.json()) as AccessTokenDto;
+        setTokens({ accessToken: data.accessToken });
+        return data.accessToken;
+      } catch {
+        clearTokens();
+        return null;
+      } finally {
+        refreshInFlight = null;
+      }
+    })();
+  }
+
+  return refreshInFlight;
+}
+
+async function request<T>(
+  path: string,
+  options: HttpRequestOptions = {},
+  isRetry = false,
+): Promise<T> {
+  const response = await rawFetch(path, options);
+
+  if (response.status === 401 && !options.skipAuth && !isRetry) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      return request<T>(path, options, true);
+    }
+  }
 
   if (!response.ok) {
     throw new Error(`HTTP ${response.status} on ${path}`);
