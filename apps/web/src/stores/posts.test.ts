@@ -19,6 +19,32 @@ const textPost = (overrides: Partial<{ id: string; channelId: string; authorId: 
   ...overrides,
 });
 
+const wordPost = (
+  overrides: Partial<{
+    id: string;
+    channelId: string;
+    authorId: string;
+    term: string;
+    lang: 'fr' | 'de';
+    translation: string;
+    note: string | null;
+    createdAt: string;
+  }> = {},
+) => ({
+  id: 'w1',
+  channelId: 'c1',
+  authorId: 'u1',
+  type: 'word_of_day' as const,
+  term: 'Feierabend',
+  lang: 'de' as const,
+  translation: 'fin de journée de travail',
+  note: null,
+  createdAt: '2026-07-31T10:00:00.000Z',
+  editedAt: null,
+  deletedAt: null,
+  ...overrides,
+});
+
 describe('posts store', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
@@ -115,6 +141,36 @@ describe('posts store', () => {
       'http://localhost:3000/posts/p1/reactions/%F0%9F%91%8D',
       expect.objectContaining({ method: 'DELETE' }),
     );
+  });
+
+  it('postWord posts the word entry and applies it locally without duplicating the realtime echo', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ posts: [], nextCursor: null }))
+      .mockResolvedValueOnce(jsonResponse(wordPost(), 201));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const store = usePostsStore();
+    await store.loadChannel('c1');
+    await store.postWord({ term: 'Feierabend', lang: 'de', translation: 'fin de journée de travail' });
+
+    expect(store.posts).toHaveLength(1);
+    expect(store.posts[0]).toMatchObject({ type: 'word_of_day', term: 'Feierabend' });
+
+    store.handlePostCreated({ post: wordPost() });
+    expect(store.posts).toHaveLength(1);
+  });
+
+  it('keeps posts of mixed types loaded for the active channel (word entries survive the generic store)', async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({ posts: [wordPost()], nextCursor: null }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const store = usePostsStore();
+    await store.loadChannel('c1');
+
+    expect(store.posts).toEqual([wordPost()]);
   });
 
   it('handlePostDeleted removes the post and its reactions', () => {
