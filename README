@@ -63,7 +63,7 @@ accueillir la logique métier : `groups`, `channels`, `posts`, `reactions`,
   `400` (code invalide ou expiré, payload invalide), `409` (code déjà
   utilisé ou `displayName` déjà pris).
 - `POST /auth/login` — `{ displayName, password }` → `{ accessToken,
-  refreshToken }`. `401` si les identifiants sont invalides.
+refreshToken }`. `401` si les identifiants sont invalides.
 - `POST /auth/refresh` — `{ refreshToken }` → `{ accessToken }` (régénère un
   nouvel access token). `401` si le refresh token est invalide/expiré.
 - `POST /auth/logout` — protégée (`Authorization: Bearer <accessToken>`) →
@@ -71,6 +71,19 @@ accueillir la logique métier : `groups`, `channels`, `posts`, `reactions`,
   JWT stateless, aucune session/révocation n'est stockée côté serveur.
 - `GET /me` — protégée → profil du user courant (`id`, `displayName`,
   `nativeLang`, `avatarUrl?`).
+
+### Invitations (groups)
+
+- `POST /groups/:id/invites` — `{ expiresAt? }` (ISO 8601, optionnel) →
+  génère un code d'invitation pour le group `:id`. Réservé au `owner` du
+  group (`GroupOwnerGuard`) : `401` sans token, `403` si le user n'est pas
+  owner de ce group (membre ou non-membre).
+- `GET /groups/:id/invites` — liste les invitations du group (même garde
+  `owner`).
+
+`GroupOwnerGuard` (`apps/api/src/groups/group-owner.guard.ts`) s'utilise
+après `JwtAuthGuard` : il vérifie la `membership` du user courant sur le
+group ciblé par le paramètre de route `:id`.
 
 `JwtAuthGuard` (`apps/api/src/auth/jwt-auth.guard.ts`) et le décorateur
 `@CurrentUser()` (`apps/api/src/auth/current-user.decorator.ts`) sont
