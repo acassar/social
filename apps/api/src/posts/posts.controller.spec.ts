@@ -20,7 +20,7 @@ const ACCESS_SECRET = 'access-secret';
 describe('PostsController', () => {
   let app: INestApplication;
   let jwtService: JwtService;
-  const createTextPostMock = jest.fn();
+  const createMock = jest.fn();
   const listMock = jest.fn();
   const updateMock = jest.fn();
   const removeMock = jest.fn();
@@ -39,7 +39,7 @@ describe('PostsController', () => {
         {
           provide: PostsService,
           useValue: {
-            createTextPost: createTextPostMock,
+            create: createMock,
             list: listMock,
             update: updateMock,
             remove: removeMock,
@@ -69,7 +69,7 @@ describe('PostsController', () => {
   });
 
   afterEach(() => {
-    createTextPostMock.mockReset();
+    createMock.mockReset();
     listMock.mockReset();
     updateMock.mockReset();
     removeMock.mockReset();
@@ -144,7 +144,7 @@ describe('PostsController', () => {
   it('POST /channels/:id/posts crée un message pour un membre', async () => {
     findChannelMock.mockResolvedValue({ id: 'channel-1', groupId: 'group-1' });
     findMembershipMock.mockResolvedValue({ role: 'member' });
-    createTextPostMock.mockResolvedValue({
+    createMock.mockResolvedValue({
       id: 'post-1',
       channelId: 'channel-1',
       authorId: 'user-1',
@@ -162,7 +162,11 @@ describe('PostsController', () => {
       .send({ body: 'salut' });
 
     expect(response.status).toBe(201);
-    expect(createTextPostMock).toHaveBeenCalledWith('channel-1', 'user-1', { body: 'salut' });
+    expect(createMock).toHaveBeenCalledWith(
+      'channel-1',
+      'user-1',
+      expect.objectContaining({ body: 'salut' }),
+    );
   });
 
   it('POST /channels/:id/posts renvoie 400 pour un body vide', async () => {
@@ -176,7 +180,70 @@ describe('PostsController', () => {
       .send({ body: '' });
 
     expect(response.status).toBe(400);
-    expect(createTextPostMock).not.toHaveBeenCalled();
+    expect(createMock).not.toHaveBeenCalled();
+  });
+
+  it('POST /channels/:id/posts crée une entrée de mot du jour (M4-T1)', async () => {
+    findChannelMock.mockResolvedValue({ id: 'channel-2', groupId: 'group-1' });
+    findMembershipMock.mockResolvedValue({ role: 'member' });
+    createMock.mockResolvedValue({
+      id: 'post-2',
+      channelId: 'channel-2',
+      authorId: 'user-1',
+      type: 'word_of_day',
+      term: 'Feierabend',
+      lang: 'de',
+      translation: 'fin de journée de travail',
+      note: null,
+      createdAt: '2026-07-31T00:00:00.000Z',
+      editedAt: null,
+      deletedAt: null,
+    });
+    const token = await accessTokenFor('user-1');
+
+    const response = await request(app.getHttpServer())
+      .post('/channels/channel-2/posts')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ term: 'Feierabend', lang: 'de', translation: 'fin de journée de travail' });
+
+    expect(response.status).toBe(201);
+    expect(createMock).toHaveBeenCalledWith(
+      'channel-2',
+      'user-1',
+      expect.objectContaining({
+        term: 'Feierabend',
+        lang: 'de',
+        translation: 'fin de journée de travail',
+      }),
+    );
+  });
+
+  it('POST /channels/:id/posts renvoie 400 pour une entrée de mot incomplète', async () => {
+    findChannelMock.mockResolvedValue({ id: 'channel-2', groupId: 'group-1' });
+    findMembershipMock.mockResolvedValue({ role: 'member' });
+    const token = await accessTokenFor('user-1');
+
+    const response = await request(app.getHttpServer())
+      .post('/channels/channel-2/posts')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ term: 'Feierabend' });
+
+    expect(response.status).toBe(400);
+    expect(createMock).not.toHaveBeenCalled();
+  });
+
+  it('POST /channels/:id/posts renvoie 400 pour un lang invalide', async () => {
+    findChannelMock.mockResolvedValue({ id: 'channel-2', groupId: 'group-1' });
+    findMembershipMock.mockResolvedValue({ role: 'member' });
+    const token = await accessTokenFor('user-1');
+
+    const response = await request(app.getHttpServer())
+      .post('/channels/channel-2/posts')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ term: 'Feierabend', lang: 'en', translation: 'x' });
+
+    expect(response.status).toBe(400);
+    expect(createMock).not.toHaveBeenCalled();
   });
 
   it('PATCH /channels/:id/posts/:postId met à jour le message', async () => {

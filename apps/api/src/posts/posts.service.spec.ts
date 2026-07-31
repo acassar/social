@@ -20,7 +20,9 @@ function createService(
   );
 }
 
-const POST_ROW = {
+const POST_INCLUDE = { textMessage: true, wordEntry: true };
+
+const TEXT_POST_ROW = {
   id: 'post-1',
   channelId: 'channel-1',
   authorId: 'user-1',
@@ -29,16 +31,29 @@ const POST_ROW = {
   editedAt: null,
   deletedAt: null,
   textMessage: { body: 'salut' },
+  wordEntry: null,
 };
 
-describe('PostsService.createTextPost', () => {
+const WORD_ENTRY_POST_ROW = {
+  id: 'post-2',
+  channelId: 'channel-2',
+  authorId: 'user-1',
+  type: 'word_of_day',
+  createdAt: new Date('2026-07-31T00:00:00.000Z'),
+  editedAt: null,
+  deletedAt: null,
+  textMessage: null,
+  wordEntry: { term: 'Feierabend', lang: 'de', translation: 'fin de journée de travail', note: null },
+};
+
+describe('PostsService.create — salon text', () => {
   it('crée un post texte, le diffuse en direct et le renvoie', async () => {
     const findUniqueChannel = jest.fn().mockResolvedValue({ id: 'channel-1', type: 'text' });
-    const create = jest.fn().mockResolvedValue(POST_ROW);
+    const create = jest.fn().mockResolvedValue(TEXT_POST_ROW);
     const emitPostCreated = jest.fn();
     const prismaMock = { channel: { findUnique: findUniqueChannel }, post: { create } };
 
-    const result = await createService(prismaMock, { emitPostCreated }).createTextPost(
+    const result = await createService(prismaMock, { emitPostCreated }).create(
       'channel-1',
       'user-1',
       { body: 'salut' },
@@ -51,7 +66,7 @@ describe('PostsService.createTextPost', () => {
         type: 'text',
         textMessage: { create: { body: 'salut' } },
       },
-      include: { textMessage: true },
+      include: POST_INCLUDE,
     });
     expect(result).toEqual({
       id: 'post-1',
@@ -72,18 +87,122 @@ describe('PostsService.createTextPost', () => {
     const prismaMock = { channel: { findUnique: findUniqueChannel }, post: { create } };
 
     await expect(
-      createService(prismaMock).createTextPost('channel-1', 'user-1', { body: 'salut' }),
+      createService(prismaMock).create('channel-1', 'user-1', { body: 'salut' }),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(create).not.toHaveBeenCalled();
   });
 
-  it("rejette (400) un salon qui n'est pas de type text", async () => {
+  it('rejette (400) un body vide pour un salon text', async () => {
+    const findUniqueChannel = jest.fn().mockResolvedValue({ id: 'channel-1', type: 'text' });
+    const create = jest.fn();
+    const prismaMock = { channel: { findUnique: findUniqueChannel }, post: { create } };
+
+    await expect(
+      createService(prismaMock).create('channel-1', 'user-1', {}),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("rejette (400) un salon qui n'accepte pas encore la création de post", async () => {
     const findUniqueChannel = jest.fn().mockResolvedValue({ id: 'channel-1', type: 'memes' });
     const create = jest.fn();
     const prismaMock = { channel: { findUnique: findUniqueChannel }, post: { create } };
 
     await expect(
-      createService(prismaMock).createTextPost('channel-1', 'user-1', { body: 'salut' }),
+      createService(prismaMock).create('channel-1', 'user-1', { body: 'salut' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(create).not.toHaveBeenCalled();
+  });
+});
+
+describe('PostsService.create — salon word_of_day (M4-T1)', () => {
+  it('crée une entrée de mot, la diffuse en direct et la renvoie', async () => {
+    const findUniqueChannel = jest
+      .fn()
+      .mockResolvedValue({ id: 'channel-2', type: 'word_of_day' });
+    const create = jest.fn().mockResolvedValue(WORD_ENTRY_POST_ROW);
+    const emitPostCreated = jest.fn();
+    const prismaMock = { channel: { findUnique: findUniqueChannel }, post: { create } };
+
+    const result = await createService(prismaMock, { emitPostCreated }).create(
+      'channel-2',
+      'user-1',
+      { term: 'Feierabend', lang: 'de', translation: 'fin de journée de travail' },
+    );
+
+    expect(create).toHaveBeenCalledWith({
+      data: {
+        channelId: 'channel-2',
+        authorId: 'user-1',
+        type: 'word_of_day',
+        wordEntry: {
+          create: {
+            term: 'Feierabend',
+            lang: 'de',
+            translation: 'fin de journée de travail',
+            note: null,
+          },
+        },
+      },
+      include: POST_INCLUDE,
+    });
+    expect(result).toEqual({
+      id: 'post-2',
+      channelId: 'channel-2',
+      authorId: 'user-1',
+      type: 'word_of_day',
+      term: 'Feierabend',
+      lang: 'de',
+      translation: 'fin de journée de travail',
+      note: null,
+      createdAt: '2026-07-31T00:00:00.000Z',
+      editedAt: null,
+      deletedAt: null,
+    });
+    expect(emitPostCreated).toHaveBeenCalledWith('channel-2', { post: result });
+  });
+
+  it('transmet la note optionnelle quand elle est fournie', async () => {
+    const findUniqueChannel = jest
+      .fn()
+      .mockResolvedValue({ id: 'channel-2', type: 'word_of_day' });
+    const create = jest
+      .fn()
+      .mockResolvedValue({
+        ...WORD_ENTRY_POST_ROW,
+        wordEntry: { ...WORD_ENTRY_POST_ROW.wordEntry, note: 'entendu au bureau' },
+      });
+    const prismaMock = { channel: { findUnique: findUniqueChannel }, post: { create } };
+
+    await createService(prismaMock).create('channel-2', 'user-1', {
+      term: 'Feierabend',
+      lang: 'de',
+      translation: 'fin de journée de travail',
+      note: 'entendu au bureau',
+    });
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          wordEntry: { create: expect.objectContaining({ note: 'entendu au bureau' }) },
+        }),
+      }),
+    );
+  });
+
+  it.each([
+    ['term manquant', { lang: 'de' as const, translation: 'x' }],
+    ['lang manquant', { term: 'x', translation: 'x' }],
+    ['translation manquante', { term: 'x', lang: 'de' as const }],
+  ])('rejette (400) une entrée incomplète : %s', async (_label, dto) => {
+    const findUniqueChannel = jest
+      .fn()
+      .mockResolvedValue({ id: 'channel-2', type: 'word_of_day' });
+    const create = jest.fn();
+    const prismaMock = { channel: { findUnique: findUniqueChannel }, post: { create } };
+
+    await expect(
+      createService(prismaMock).create('channel-2', 'user-1', dto),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(create).not.toHaveBeenCalled();
   });
@@ -91,14 +210,14 @@ describe('PostsService.createTextPost', () => {
 
 describe('PostsService.list', () => {
   it('liste les posts non supprimés par ordre chronologique, sans page suivante', async () => {
-    const findMany = jest.fn().mockResolvedValue([POST_ROW]);
+    const findMany = jest.fn().mockResolvedValue([TEXT_POST_ROW]);
     const prismaMock = { post: { findMany } };
 
     const result = await createService(prismaMock).list('channel-1', undefined, 30);
 
     expect(findMany).toHaveBeenCalledWith({
       where: { channelId: 'channel-1', deletedAt: null },
-      include: { textMessage: true },
+      include: POST_INCLUDE,
       orderBy: { createdAt: 'asc' },
       take: 31,
     });
@@ -108,7 +227,7 @@ describe('PostsService.list', () => {
 
   it('renvoie un nextCursor quand il reste des posts, et transmet le curseur reçu', async () => {
     const rows = Array.from({ length: 3 }, (_, i) => ({
-      ...POST_ROW,
+      ...TEXT_POST_ROW,
       id: `post-${i}`,
     }));
     const findMany = jest.fn().mockResolvedValue(rows);
@@ -118,7 +237,7 @@ describe('PostsService.list', () => {
 
     expect(findMany).toHaveBeenCalledWith({
       where: { channelId: 'channel-1', deletedAt: null },
-      include: { textMessage: true },
+      include: POST_INCLUDE,
       orderBy: { createdAt: 'asc' },
       take: 3,
       cursor: { id: 'post-0' },
@@ -127,12 +246,23 @@ describe('PostsService.list', () => {
     expect(result.posts).toHaveLength(2);
     expect(result.nextCursor).toBe('post-1');
   });
+
+  it('renvoie aussi bien des posts text que word_of_day', async () => {
+    const findMany = jest.fn().mockResolvedValue([TEXT_POST_ROW, WORD_ENTRY_POST_ROW]);
+    const prismaMock = { post: { findMany } };
+
+    const result = await createService(prismaMock).list('channel-1', undefined, 30);
+
+    expect(result.posts.map((p) => p.type)).toEqual(['text', 'word_of_day']);
+  });
 });
 
 describe('PostsService.update', () => {
   it("met à jour le body d'un post appartenant à son auteur et diffuse post:updated", async () => {
-    const findUnique = jest.fn().mockResolvedValue(POST_ROW);
-    const update = jest.fn().mockResolvedValue({ ...POST_ROW, textMessage: { body: 'coucou' } });
+    const findUnique = jest.fn().mockResolvedValue(TEXT_POST_ROW);
+    const update = jest
+      .fn()
+      .mockResolvedValue({ ...TEXT_POST_ROW, textMessage: { body: 'coucou' } });
     const emitPostUpdated = jest.fn();
     const prismaMock = { post: { findUnique, update } };
 
@@ -146,14 +276,14 @@ describe('PostsService.update', () => {
     expect(update).toHaveBeenCalledWith({
       where: { id: 'post-1' },
       data: { editedAt: expect.any(Date), textMessage: { update: { body: 'coucou' } } },
-      include: { textMessage: true },
+      include: POST_INCLUDE,
     });
     expect(result.body).toBe('coucou');
     expect(emitPostUpdated).toHaveBeenCalledWith('channel-1', { post: result });
   });
 
   it("rejette (403) l'édition par un autre user que l'auteur", async () => {
-    const findUnique = jest.fn().mockResolvedValue(POST_ROW);
+    const findUnique = jest.fn().mockResolvedValue(TEXT_POST_ROW);
     const update = jest.fn();
     const prismaMock = { post: { findUnique, update } };
 
@@ -173,12 +303,23 @@ describe('PostsService.update', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(update).not.toHaveBeenCalled();
   });
+
+  it("rejette (400) l'édition d'un post qui n'est pas de type text", async () => {
+    const findUnique = jest.fn().mockResolvedValue(WORD_ENTRY_POST_ROW);
+    const update = jest.fn();
+    const prismaMock = { post: { findUnique, update } };
+
+    await expect(
+      createService(prismaMock).update('channel-2', 'post-2', 'user-1', { body: 'coucou' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(update).not.toHaveBeenCalled();
+  });
 });
 
 describe('PostsService.remove', () => {
   it('soft-delete un post appartenant à son auteur et diffuse post:deleted', async () => {
-    const findUnique = jest.fn().mockResolvedValue(POST_ROW);
-    const update = jest.fn().mockResolvedValue({ ...POST_ROW, deletedAt: new Date() });
+    const findUnique = jest.fn().mockResolvedValue(TEXT_POST_ROW);
+    const update = jest.fn().mockResolvedValue({ ...TEXT_POST_ROW, deletedAt: new Date() });
     const emitPostDeleted = jest.fn();
     const prismaMock = { post: { findUnique, update } };
 
@@ -195,7 +336,7 @@ describe('PostsService.remove', () => {
   });
 
   it('rejette (403) la suppression par un autre user que l’auteur', async () => {
-    const findUnique = jest.fn().mockResolvedValue(POST_ROW);
+    const findUnique = jest.fn().mockResolvedValue(TEXT_POST_ROW);
     const update = jest.fn();
     const prismaMock = { post: { findUnique, update } };
 

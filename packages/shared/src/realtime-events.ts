@@ -1,5 +1,5 @@
 import type { ChannelType } from './channels';
-import type { TextPostDto } from './posts';
+import type { PostDto } from './posts';
 
 export const REALTIME_EVENTS = {
   POST_CREATED: 'post:created',
@@ -26,14 +26,14 @@ export interface PostSummaryDto {
 }
 
 // Le contenu typé rejoint le contrat au fur et à mesure de son implémentation
-// (voir le commentaire sur PostSummaryDto) : M3-T1 l'étend avec TextPostDto ;
-// M4-T1/M5-T2 l'étendront à leur tour pour les autres types de post.
+// (voir le commentaire sur PostSummaryDto) : M3-T1 l'étend avec TextPostDto,
+// M4-T1 avec WordEntryPostDto ; M5-T2 l'étendra à son tour pour `memes`.
 export interface PostCreatedEvent {
-  post: TextPostDto;
+  post: PostDto;
 }
 
 export interface PostUpdatedEvent {
-  post: TextPostDto;
+  post: PostDto;
 }
 
 export interface PostDeletedEvent {

@@ -4,8 +4,8 @@ import { RealtimeModule } from '../realtime/realtime.module';
 import { PostsController } from './posts.controller';
 import { PostsService } from './posts.service';
 
-// Messages texte (M3-T1). Les types `word_of_day`/`memes` étendront ce
-// module (M4-T1, M5-T2).
+// Messages texte (M3-T1) + mot du jour (M4-T1). Le type `memes` étendra ce
+// module (M5-T2).
 @Module({
   imports: [ChannelsModule, RealtimeModule],
   controllers: [PostsController],

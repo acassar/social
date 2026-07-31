@@ -4,12 +4,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type {
-  CreateTextPostRequestDto,
-  PostsPageDto,
-  TextPostDto,
-  UpdateTextPostRequestDto,
-} from '@social/shared';
+import type { NativeLang, PostDto, PostsPageDto, TextPostDto, UpdateTextPostRequestDto } from '@social/shared';
+import type { CreatePostDto } from './dto/create-post.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
 
@@ -22,9 +18,10 @@ interface PostRow {
   editedAt: Date | null;
   deletedAt: Date | null;
   textMessage: { body: string } | null;
+  wordEntry: { term: string; lang: string; translation: string; note: string | null } | null;
 }
 
-const TEXT_MESSAGE_INCLUDE = { textMessage: true } as const;
+const POST_INCLUDE = { textMessage: true, wordEntry: true } as const;
 
 @Injectable()
 export class PostsService {
@@ -33,38 +30,59 @@ export class PostsService {
     private readonly realtimeEvents: RealtimeEventsService,
   ) {}
 
-  async createTextPost(
-    channelId: string,
-    authorId: string,
-    dto: CreateTextPostRequestDto,
-  ): Promise<TextPostDto> {
+  async create(channelId: string, authorId: string, dto: CreatePostDto): Promise<PostDto> {
     const channel = await this.prisma.channel.findUnique({ where: { id: channelId } });
     if (!channel) {
       throw new NotFoundException('Salon introuvable');
     }
-    if (channel.type !== 'text') {
-      throw new BadRequestException("Ce salon n'accepte pas les messages texte");
+
+    if (channel.type === 'text') {
+      if (!dto.body) {
+        throw new BadRequestException('body requis pour un salon de type text');
+      }
+      const post = await this.prisma.post.create({
+        data: { channelId, authorId, type: 'text', textMessage: { create: { body: dto.body } } },
+        include: POST_INCLUDE,
+      });
+      const result = this.toDto(post);
+      this.realtimeEvents.emitPostCreated(channelId, { post: result });
+      return result;
     }
 
-    const post = await this.prisma.post.create({
-      data: {
-        channelId,
-        authorId,
-        type: 'text',
-        textMessage: { create: { body: dto.body } },
-      },
-      include: TEXT_MESSAGE_INCLUDE,
-    });
+    if (channel.type === 'word_of_day') {
+      if (!dto.term || !dto.lang || !dto.translation) {
+        throw new BadRequestException(
+          'term, lang et translation sont requis pour un salon de type word_of_day',
+        );
+      }
+      const post = await this.prisma.post.create({
+        data: {
+          channelId,
+          authorId,
+          type: 'word_of_day',
+          wordEntry: {
+            create: {
+              term: dto.term,
+              lang: dto.lang,
+              translation: dto.translation,
+              note: dto.note ?? null,
+            },
+          },
+        },
+        include: POST_INCLUDE,
+      });
+      const result = this.toDto(post);
+      this.realtimeEvents.emitPostCreated(channelId, { post: result });
+      return result;
+    }
 
-    const result = this.toDto(post);
-    this.realtimeEvents.emitPostCreated(channelId, { post: result });
-    return result;
+    throw new BadRequestException("Ce salon n'accepte pas encore la création de post");
   }
 
   async list(channelId: string, cursor: string | undefined, limit: number): Promise<PostsPageDto> {
     const posts = await this.prisma.post.findMany({
       where: { channelId, deletedAt: null },
-      include: TEXT_MESSAGE_INCLUDE,
+      include: POST_INCLUDE,
       orderBy: { createdAt: 'asc' },
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -85,15 +103,18 @@ export class PostsService {
     requesterId: string,
     dto: UpdateTextPostRequestDto,
   ): Promise<TextPostDto> {
-    await this.findOwnedPost(channelId, postId, requesterId);
+    const existing = await this.findOwnedPost(channelId, postId, requesterId);
+    if (existing.type !== 'text') {
+      throw new BadRequestException("L'édition n'est supportée que pour les messages texte");
+    }
 
     const post = await this.prisma.post.update({
       where: { id: postId },
       data: { editedAt: new Date(), textMessage: { update: { body: dto.body } } },
-      include: TEXT_MESSAGE_INCLUDE,
+      include: POST_INCLUDE,
     });
 
-    const result = this.toDto(post);
+    const result = this.toDto(post) as TextPostDto;
     this.realtimeEvents.emitPostUpdated(channelId, { post: result });
     return result;
   }
@@ -112,7 +133,7 @@ export class PostsService {
   ): Promise<PostRow> {
     const post = await this.prisma.post.findUnique({
       where: { id: postId },
-      include: TEXT_MESSAGE_INCLUDE,
+      include: POST_INCLUDE,
     });
     if (!post || post.channelId !== channelId || post.deletedAt) {
       throw new NotFoundException('Message introuvable dans ce salon');
@@ -123,16 +144,31 @@ export class PostsService {
     return post;
   }
 
-  private toDto(post: PostRow): TextPostDto {
-    return {
+  private toDto(post: PostRow): PostDto {
+    const base = {
       id: post.id,
       channelId: post.channelId,
       authorId: post.authorId,
-      type: 'text',
-      body: post.textMessage?.body ?? '',
       createdAt: post.createdAt.toISOString(),
       editedAt: post.editedAt ? post.editedAt.toISOString() : null,
       deletedAt: post.deletedAt ? post.deletedAt.toISOString() : null,
+    };
+
+    if (post.type === 'word_of_day' && post.wordEntry) {
+      return {
+        ...base,
+        type: 'word_of_day',
+        term: post.wordEntry.term,
+        lang: post.wordEntry.lang as NativeLang,
+        translation: post.wordEntry.translation,
+        note: post.wordEntry.note,
+      };
+    }
+
+    return {
+      ...base,
+      type: 'text',
+      body: post.textMessage?.body ?? '',
     };
   }
 }
