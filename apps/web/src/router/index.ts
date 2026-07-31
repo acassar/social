@@ -8,6 +8,11 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/LoginPage.vue'),
   },
   {
+    path: '/join',
+    name: 'join',
+    component: () => import('@/pages/JoinPage.vue'),
+  },
+  {
     path: '/app',
     name: 'app',
     component: () => import('@/pages/AppHome.vue'),

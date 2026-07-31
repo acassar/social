@@ -116,7 +116,17 @@ pnpm --filter web dev   # sert l'app Vue sur http://localhost:5173
 ```
 
 Vue 3 + Vite + TypeScript + Vuetify (thème sombre par défaut). Router
-(`vue-router`) avec une page publique `/login` et une page protégée `/app`
-(gardée par un guard de navigation minimal — la vraie session arrivera avec
-le store d'auth Pinia en M1-T4). Client HTTP centralisé (`src/lib/http.ts`)
-qui lit l'URL de l'API depuis `VITE_API_URL` (voir `apps/web/.env.example`).
+(`vue-router`) avec deux pages publiques — `/login` (se connecter) et `/join`
+(rejoindre avec un code d'invitation, pré-remplie depuis `?code=`) — et une
+page protégée `/app`, gardée par un guard de navigation qui consulte le
+token stocké en `localStorage`.
+
+Store d'auth Pinia (`src/stores/auth.ts`, instance unique dans
+`src/stores/pinia.ts`) : `login`, `join` (inscription puis connexion),
+`logout`, `restoreSession` (recharge le profil au démarrage/rechargement de
+page si un token est déjà présent), profil courant (`user`) affiché sur la
+page protégée. Client HTTP centralisé (`src/lib/http.ts`) qui lit l'URL de
+l'API depuis `VITE_API_URL` (voir `apps/web/.env.example`), attache le
+`Bearer <accessToken>` automatiquement, et retente une fois la requête après
+un refresh silencieux sur un 401 (`POST /auth/refresh`) avant d'abandonner et
+de nettoyer les tokens.
