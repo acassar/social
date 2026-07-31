@@ -80,6 +80,12 @@ lui-même (d'où le réexport de `JwtModule` par `AuthModule`).
   utilisé ou `displayName` déjà pris).
 - `POST /auth/login` — `{ displayName, password }` → `{ accessToken,
 refreshToken }`. `401` si les identifiants sont invalides.
+
+Les identifiants copiés-collés (`displayName`, `inviteCode`) passent par
+`@Trim()` (`apps/api/src/common/trim.decorator.ts`) : un espace parasite
+échouait en `401`, indiscernable d'un vrai mauvais mot de passe. Un champ
+réduit à des espaces part désormais en `400`. Les mots de passe ne sont pas
+trimés — un espace peut y être intentionnel.
 - `POST /auth/refresh` — `{ refreshToken }` → `{ accessToken }` (régénère un
   nouvel access token). `401` si le refresh token est invalide/expiré.
 - `POST /auth/logout` — protégée (`Authorization: Bearer <accessToken>`) →
