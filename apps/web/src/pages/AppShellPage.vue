@@ -34,6 +34,13 @@ const currentChannel = computed(() =>
   channelsStore.channels.find((channel) => channel.id === route.params.channelId),
 );
 
+const pageTitle = computed(() => {
+  if (route.name === 'glossary') {
+    return 'Glossaire';
+  }
+  return currentChannel.value?.name ?? 'Sélectionne un salon';
+});
+
 async function onLogout(): Promise<void> {
   realtimeStore.disconnect();
   await authStore.logout();
@@ -54,6 +61,15 @@ async function onLogout(): Promise<void> {
       />
     </v-list>
 
+    <v-divider />
+    <v-list nav density="compact">
+      <v-list-item
+        :to="{ name: 'glossary' }"
+        title="Glossaire"
+        prepend-icon="mdi-book-open-variant"
+      />
+    </v-list>
+
     <template #append>
       <div class="pa-2">
         <p v-if="authStore.user" class="text-body-2 mb-2">{{ authStore.user.displayName }}</p>
@@ -63,7 +79,7 @@ async function onLogout(): Promise<void> {
   </v-navigation-drawer>
 
   <v-app-bar flat density="comfortable">
-    <v-toolbar-title>{{ currentChannel?.name ?? 'Sélectionne un salon' }}</v-toolbar-title>
+    <v-toolbar-title>{{ pageTitle }}</v-toolbar-title>
   </v-app-bar>
 
   <v-main>

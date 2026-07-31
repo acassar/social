@@ -23,6 +23,11 @@ export const routes: RouteRecordRaw[] = [
         name: 'channel',
         component: () => import('@/pages/ChannelPage.vue'),
       },
+      {
+        path: 'glossary',
+        name: 'glossary',
+        component: () => import('@/pages/GlossaryPage.vue'),
+      },
     ],
   },
   { path: '/', redirect: '/login' },
