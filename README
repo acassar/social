@@ -89,6 +89,51 @@ group ciblé par le paramètre de route `:id`.
 `@CurrentUser()` (`apps/api/src/auth/current-user.decorator.ts`) sont
 réutilisables par les futurs modules protégés (groups, channels, ...).
 
+### Salons (channels)
+
+- `GET /groups/:id/channels` — liste les salons du group `:id`, triés par
+  `position`. Ouvert à tout membre du group (`GroupMemberGuard`) : `401` sans
+  token, `403` pour un non-membre.
+- `POST /groups/:id/channels` — `{ name, type, position }` (`type` ∈ `text`,
+  `word_of_day`, `memes`, validé contre l'enum partagé `@social/shared`) →
+  crée un salon. Réservé au `owner` du group (`GroupOwnerGuard`) : `403` pour
+  un membre non-owner.
+- `PATCH /groups/:id/channels/:channelId` — `{ name?, type?, position? }` →
+  met à jour un salon. Réservé au `owner`. `404` si le salon n'existe pas ou
+  n'appartient pas au group `:id`.
+- `DELETE /groups/:id/channels/:channelId` — supprime un salon. Réservé au
+  `owner`. Mêmes règles de garde que `PATCH`.
+
+`GroupMemberGuard` (`apps/api/src/groups/group-member.guard.ts`) s'utilise
+après `JwtAuthGuard` : il vérifie que le user courant a une `membership`
+(quel que soit son rôle) sur le group ciblé par `:id` — moins strict que
+`GroupOwnerGuard`. Les deux guards sont exportés par `GroupsModule` et
+réutilisés par `ChannelsModule`.
+
+### Temps réel (Socket.io)
+
+Gateway Socket.io (`apps/api/src/realtime/realtime.gateway.ts`) : handshake
+authentifié par JWT, transmis par le client via `auth: { token }` (fallback
+`Authorization: Bearer <token>`) — voir `WsJwtGuard`
+(`apps/api/src/realtime/ws-jwt.guard.ts`). Un handshake sans token, ou avec un
+token invalide/expiré, est déconnecté (`exception` émis puis
+`socket.disconnect()`). À la connexion, le client rejoint automatiquement une
+room `channel:{id}` par salon des groups dont il est membre — ces rooms sont
+recalculées à chaque connexion, donc une reconnexion rejoint naturellement les
+bonnes rooms sans état à persister côté serveur.
+
+Contrat d'événements temps réel (types partagés dans
+`packages/shared/src/realtime-events.ts`) : `post:created`, `post:updated`,
+`post:deleted`, `reaction:added`, `reaction:removed`, `presence:update`.
+Émetteur central (`RealtimeEventsService`,
+`apps/api/src/realtime/realtime-events.service.ts`, exporté par
+`RealtimeModule`) : les modules métier l'appellent après écriture
+(`emitPostCreated`, `emitReactionAdded`, ...) pour diffuser vers la room du
+salon concerné — le gateway ne fait que router la connexion (join des rooms),
+aucune logique métier n'y vit. `presence:update` n'a pour l'instant qu'un
+type de payload défini (pas de room group dédiée : la présence est listée en
+« Backlog différé » dans `doc/BACKLOG.md`).
+
 ## Base de données (Postgres + Prisma)
 
 Postgres tourne en local via Docker Compose (`docker-compose.yml` à la racine) ;
@@ -124,9 +169,34 @@ token stocké en `localStorage`.
 Store d'auth Pinia (`src/stores/auth.ts`, instance unique dans
 `src/stores/pinia.ts`) : `login`, `join` (inscription puis connexion),
 `logout`, `restoreSession` (recharge le profil au démarrage/rechargement de
-page si un token est déjà présent), profil courant (`user`) affiché sur la
-page protégée. Client HTTP centralisé (`src/lib/http.ts`) qui lit l'URL de
-l'API depuis `VITE_API_URL` (voir `apps/web/.env.example`), attache le
-`Bearer <accessToken>` automatiquement, et retente une fois la requête après
-un refresh silencieux sur un 401 (`POST /auth/refresh`) avant d'abandonner et
-de nettoyer les tokens.
+page si un token est déjà présent), profil courant (`user`, qui porte
+désormais aussi `groupId` — voir plus bas). Client HTTP centralisé
+(`src/lib/http.ts`) qui lit l'URL de l'API depuis `VITE_API_URL` (voir
+`apps/web/.env.example`), attache le `Bearer <accessToken>` automatiquement,
+et retente une fois la requête après un refresh silencieux sur un 401
+(`POST /auth/refresh`) avant d'abandonner et de nettoyer les tokens.
+
+### Shell applicatif façon Discord (`AppShellPage.vue`, M2-T4)
+
+La page protégée `/app` (`src/pages/AppShellPage.vue`) est un layout à
+colonnes : `v-navigation-drawer` listant les salons du group (triés par
+`position`, une icône par `type` de salon), `v-app-bar` affichant le nom du
+salon sélectionné, `v-main` avec le contenu du salon en `router-view` imbriqué
+(`/app` → aucun salon sélectionné, `/app/channels/:channelId` →
+`ChannelPage.vue`, contenu vide pour l'instant — le rendu par type de salon
+arrive avec M3+/M4+/M5+).
+
+Store `channels` (`src/stores/channels.ts`) : `fetchChannels(groupId)` charge
+`GET /groups/:id/channels` ; `sortedChannels` trie par `position`. Store
+`realtime` (`src/stores/realtime.ts`) : `connect()` ouvre une connexion
+`socket.io-client` vers l'API (`auth: { token }`, même token que le REST) au
+montage du shell, journalise dans la console chaque événement du contrat
+temps réel (`post:created`, `reaction:added`, ...) reçu — la mise à jour de
+l'état applicatif à partir de ces événements arrivera avec M3+.
+`disconnect()` ferme le socket au démontage du shell / à la déconnexion.
+
+`GET /me` renvoie désormais aussi `groupId` (première — et pour l'instant
+unique — membership du user, cohérent avec le MVP à un seul group actif,
+voir `doc/SPEC.md` §1) : c'est ce qui permet au shell de savoir quel group
+charger sans endpoint `GET /groups` dédié (hors périmètre M2-T4, CRUD des
+groups non implémenté).

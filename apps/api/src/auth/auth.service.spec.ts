@@ -249,7 +249,7 @@ describe('AuthService.refresh', () => {
 });
 
 describe('AuthService.me', () => {
-  it('renvoie le profil du user identifié par le token', async () => {
+  it('renvoie le profil du user identifié par le token, avec le group de sa membership', async () => {
     const prismaMock = {
       user: {
         findUnique: jest.fn().mockResolvedValue({
@@ -259,6 +259,9 @@ describe('AuthService.me', () => {
           avatarUrl: null,
         }),
       },
+      membership: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'membership-1', groupId: 'group-1' }),
+      },
     };
 
     await expect(createService(prismaMock).me('user-1')).resolves.toEqual({
@@ -266,6 +269,7 @@ describe('AuthService.me', () => {
       displayName: 'Alex',
       nativeLang: 'fr',
       avatarUrl: undefined,
+      groupId: 'group-1',
     });
   });
 
@@ -273,6 +277,24 @@ describe('AuthService.me', () => {
     const prismaMock = { user: { findUnique: jest.fn().mockResolvedValue(null) } };
 
     await expect(createService(prismaMock).me('gone')).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+  });
+
+  it('rejette (401) si le user n’a plus aucune membership', async () => {
+    const prismaMock = {
+      user: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'user-1',
+          displayName: 'Alex',
+          nativeLang: 'fr',
+          avatarUrl: null,
+        }),
+      },
+      membership: { findFirst: jest.fn().mockResolvedValue(null) },
+    };
+
+    await expect(createService(prismaMock).me('user-1')).rejects.toBeInstanceOf(
       UnauthorizedException,
     );
   });

@@ -128,11 +128,21 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
+    // MVP à un seul group actif (doc/SPEC.md §1) : la première membership du
+    // user porte le group à afficher côté front (shell M2-T4). Le modèle
+    // reste multi-group ; une sélection explicite de group n'est pas
+    // demandée par le backlog actuel.
+    const membership = await this.prisma.membership.findFirst({ where: { userId } });
+    if (!membership) {
+      throw new UnauthorizedException();
+    }
+
     return {
       id: user.id,
       displayName: user.displayName,
       nativeLang: user.nativeLang,
       avatarUrl: user.avatarUrl ?? undefined,
+      groupId: membership.groupId,
     };
   }
 
