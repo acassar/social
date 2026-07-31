@@ -3,6 +3,7 @@ import { defineStore } from 'pinia';
 import type {
   CreateReactionRequestDto,
   CreateTextPostRequestDto,
+  CreateWordEntryRequestDto,
   PostCreatedEvent,
   PostDeletedEvent,
   PostDto,
@@ -12,17 +13,27 @@ import type {
   ReactionDto,
   ReactionRemovedEvent,
   TextPostDto,
+  WordEntryPostDto,
 } from '@social/shared';
 import { http } from '@/lib/http';
 import { useAuthStore } from '@/stores/auth';
 
-function isTextPost(post: PostDto): post is TextPostDto {
+export function isTextPost(post: PostDto): post is TextPostDto {
   return post.type === 'text';
+}
+
+export function isWordEntryPost(post: PostDto): post is WordEntryPostDto {
+  return post.type === 'word_of_day';
 }
 
 interface PostsState {
   channelId: string | null;
-  posts: TextPostDto[];
+  // Un salon n'a qu'un seul type de post en pratique (déterminé par
+  // `channel.type`, voir doc/SPEC.md §3) : le store reste générique sur
+  // `PostDto`, chaque vue de salon (TextChannelView, WordChannelView, …)
+  // se charge de restreindre son affichage au type qu'elle sait rendre via
+  // `isTextPost`/`isWordEntryPost`.
+  posts: PostDto[];
   reactionsByPost: Record<string, ReactionDto[]>;
   nextCursor: string | null;
   loading: boolean;
@@ -71,9 +82,7 @@ export const usePostsStore = defineStore('posts', {
         if (this.channelId !== channelId) {
           return;
         }
-        // Cette vue ne rend que le salon `text` (M3-T3) ; les autres types de
-        // post (word_of_day, memes) auront leur propre vue (M4-T2, M5-T3).
-        this.posts = page.posts.filter(isTextPost);
+        this.posts = page.posts;
         this.nextCursor = page.nextCursor;
       } catch {
         this.error = 'Impossible de charger les messages.';
@@ -94,9 +103,7 @@ export const usePostsStore = defineStore('posts', {
           return;
         }
         const existingIds = new Set(this.posts.map((post) => post.id));
-        this.posts.push(
-          ...page.posts.filter(isTextPost).filter((post) => !existingIds.has(post.id)),
-        );
+        this.posts.push(...page.posts.filter((post) => !existingIds.has(post.id)));
         this.nextCursor = page.nextCursor;
       } catch {
         this.error = 'Impossible de charger la suite des messages.';
@@ -114,6 +121,15 @@ export const usePostsStore = defineStore('posts', {
       const post = await http.post<TextPostDto>(`/channels/${channelId}/posts`, {
         body: trimmed,
       } satisfies CreateTextPostRequestDto);
+      this.handlePostCreated({ post });
+    },
+
+    async postWord(payload: CreateWordEntryRequestDto): Promise<void> {
+      const channelId = this.channelId;
+      if (!channelId || !payload.term.trim() || !payload.translation.trim()) {
+        return;
+      }
+      const post = await http.post<WordEntryPostDto>(`/channels/${channelId}/posts`, payload);
       this.handlePostCreated({ post });
     },
 
@@ -137,7 +153,7 @@ export const usePostsStore = defineStore('posts', {
     },
 
     handlePostCreated(event: PostCreatedEvent): void {
-      if (!isTextPost(event.post) || event.post.channelId !== this.channelId) {
+      if (event.post.channelId !== this.channelId) {
         return;
       }
       if (this.posts.some((post) => post.id === event.post.id)) {
@@ -147,7 +163,7 @@ export const usePostsStore = defineStore('posts', {
     },
 
     handlePostUpdated(event: PostUpdatedEvent): void {
-      if (!isTextPost(event.post) || event.post.channelId !== this.channelId) {
+      if (event.post.channelId !== this.channelId) {
         return;
       }
       const index = this.posts.findIndex((post) => post.id === event.post.id);
