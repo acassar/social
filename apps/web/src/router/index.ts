@@ -14,9 +14,16 @@ export const routes: RouteRecordRaw[] = [
   },
   {
     path: '/app',
-    name: 'app',
-    component: () => import('@/pages/AppHome.vue'),
+    component: () => import('@/pages/AppShellPage.vue'),
     meta: { requiresAuth: true },
+    children: [
+      { path: '', name: 'app', component: () => import('@/pages/ChannelPage.vue') },
+      {
+        path: 'channels/:channelId',
+        name: 'channel',
+        component: () => import('@/pages/ChannelPage.vue'),
+      },
+    ],
   },
   { path: '/', redirect: '/login' },
 ];

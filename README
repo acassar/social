@@ -169,9 +169,34 @@ token stocké en `localStorage`.
 Store d'auth Pinia (`src/stores/auth.ts`, instance unique dans
 `src/stores/pinia.ts`) : `login`, `join` (inscription puis connexion),
 `logout`, `restoreSession` (recharge le profil au démarrage/rechargement de
-page si un token est déjà présent), profil courant (`user`) affiché sur la
-page protégée. Client HTTP centralisé (`src/lib/http.ts`) qui lit l'URL de
-l'API depuis `VITE_API_URL` (voir `apps/web/.env.example`), attache le
-`Bearer <accessToken>` automatiquement, et retente une fois la requête après
-un refresh silencieux sur un 401 (`POST /auth/refresh`) avant d'abandonner et
-de nettoyer les tokens.
+page si un token est déjà présent), profil courant (`user`, qui porte
+désormais aussi `groupId` — voir plus bas). Client HTTP centralisé
+(`src/lib/http.ts`) qui lit l'URL de l'API depuis `VITE_API_URL` (voir
+`apps/web/.env.example`), attache le `Bearer <accessToken>` automatiquement,
+et retente une fois la requête après un refresh silencieux sur un 401
+(`POST /auth/refresh`) avant d'abandonner et de nettoyer les tokens.
+
+### Shell applicatif façon Discord (`AppShellPage.vue`, M2-T4)
+
+La page protégée `/app` (`src/pages/AppShellPage.vue`) est un layout à
+colonnes : `v-navigation-drawer` listant les salons du group (triés par
+`position`, une icône par `type` de salon), `v-app-bar` affichant le nom du
+salon sélectionné, `v-main` avec le contenu du salon en `router-view` imbriqué
+(`/app` → aucun salon sélectionné, `/app/channels/:channelId` →
+`ChannelPage.vue`, contenu vide pour l'instant — le rendu par type de salon
+arrive avec M3+/M4+/M5+).
+
+Store `channels` (`src/stores/channels.ts`) : `fetchChannels(groupId)` charge
+`GET /groups/:id/channels` ; `sortedChannels` trie par `position`. Store
+`realtime` (`src/stores/realtime.ts`) : `connect()` ouvre une connexion
+`socket.io-client` vers l'API (`auth: { token }`, même token que le REST) au
+montage du shell, journalise dans la console chaque événement du contrat
+temps réel (`post:created`, `reaction:added`, ...) reçu — la mise à jour de
+l'état applicatif à partir de ces événements arrivera avec M3+.
+`disconnect()` ferme le socket au démontage du shell / à la déconnexion.
+
+`GET /me` renvoie désormais aussi `groupId` (première — et pour l'instant
+unique — membership du user, cohérent avec le MVP à un seul group actif,
+voir `doc/SPEC.md` §1) : c'est ce qui permet au shell de savoir quel group
+charger sans endpoint `GET /groups` dédié (hors périmètre M2-T4, CRUD des
+groups non implémenté).
