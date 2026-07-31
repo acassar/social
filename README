@@ -110,6 +110,29 @@ après `JwtAuthGuard` : il vérifie que le user courant a une `membership`
 `GroupOwnerGuard`. Les deux guards sont exportés par `GroupsModule` et
 réutilisés par `ChannelsModule`.
 
+### Messages texte (posts, M3-T1)
+
+- `GET /channels/:id/posts?cursor=&limit=` — liste les messages du salon
+  `text` `:id`, ordre chronologique (`created_at` croissant), paginés par
+  curseur (`cursor` = id du dernier post reçu ; `limit` par défaut `30`, max
+  `100`). Les posts supprimés (`deleted_at` non nul) sont exclus. Réponse
+  `{ posts: TextPostDto[], nextCursor: string | null }`.
+- `POST /channels/:id/posts` — `{ body }` → crée un `post` (type `text`) +
+  sa `text_messages` associée, émet `post:created` vers la room `channel:{id}`.
+  `400` si le salon `:id` n'est pas de type `text`.
+- `PATCH /channels/:id/posts/:postId` — `{ body }` → édite le message, pose
+  `edited_at`, émet `post:updated`. Réservé à l'auteur du post (`403` sinon).
+- `DELETE /channels/:id/posts/:postId` — soft-delete (`deleted_at`), émet
+  `post:deleted`. Réservé à l'auteur du post (`403` sinon).
+
+Toutes ces routes sont derrière `ChannelMemberGuard`
+(`apps/api/src/channels/channel-member.guard.ts`, exporté par
+`ChannelsModule`) : `404` si le salon `:id` n'existe pas, `403` si le user
+n'est pas membre du group auquel il appartient. `PATCH`/`DELETE` vérifient en
+plus, dans `PostsService`, que le requester est bien l'auteur du post visé
+(`404` si le post n'existe pas / n'appartient pas à ce salon / est déjà
+supprimé).
+
 ### Temps réel (Socket.io)
 
 Gateway Socket.io (`apps/api/src/realtime/realtime.gateway.ts`) : handshake
@@ -132,7 +155,9 @@ Contrat d'événements temps réel (types partagés dans
 salon concerné — le gateway ne fait que router la connexion (join des rooms),
 aucune logique métier n'y vit. `presence:update` n'a pour l'instant qu'un
 type de payload défini (pas de room group dédiée : la présence est listée en
-« Backlog différé » dans `doc/BACKLOG.md`).
+« Backlog différé » dans `doc/BACKLOG.md`). Depuis M3-T1, `post:created` et
+`post:updated` transportent un `TextPostDto` complet (spine + `body`) — les
+types `word_of_day`/`memes` étendront ce contrat à leur tour (M4-T1, M5-T2).
 
 ## Base de données (Postgres + Prisma)
 
