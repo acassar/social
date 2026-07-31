@@ -45,7 +45,16 @@ workspace. ESLint (flat config, `eslint.config.mjs`) et Prettier sont partagés
 ```
 cp apps/api/.env.example apps/api/.env
 pnpm --filter api start:dev   # démarre l'app NestJS (watch), GET /health -> { status: 'ok' }
+pnpm --filter api stop:dev    # arrête une instance restée en fond
 ```
+
+`start:dev` libère `PORT` avant de démarrer (`scripts/free-port.mjs`).
+`node --watch` lance le serveur dans un process enfant : interrompre le
+terminal laisse parfois l'enfant vivant, et tuer le seul écouteur ne sert à
+rien puisque le watcher parent en relance un. On retombait alors sur
+`EADDRINUSE` sans savoir quoi arrêter. Le script remonte la chaîne des
+parents et ne tue que des process identifiés comme étant cette API — si le
+port est pris par autre chose, il s'arrête et le dit.
 
 Variables d'environnement (voir `apps/api/.env.example`) : `NODE_ENV`, `PORT`,
 `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_ACCESS_EXPIRES_IN`,

@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start:dev": "node --import @swc-node/register/esm-register --watch src/main.ts",
+    "start:dev": "node scripts/free-port.mjs && node --import @swc-node/register/esm-register --watch src/main.ts",
+    "stop:dev": "node scripts/free-port.mjs",
     "typecheck": "tsc --noEmit",
     "build": "tsc",
     "test": "jest",
