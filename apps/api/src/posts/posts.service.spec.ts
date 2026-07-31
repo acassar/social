@@ -20,7 +20,7 @@ function createService(
   );
 }
 
-const POST_INCLUDE = { textMessage: true, wordEntry: true };
+const POST_INCLUDE = { textMessage: true, wordEntry: true, attachments: true };
 
 const TEXT_POST_ROW = {
   id: 'post-1',
@@ -32,6 +32,7 @@ const TEXT_POST_ROW = {
   deletedAt: null,
   textMessage: { body: 'salut' },
   wordEntry: null,
+  attachments: [],
 };
 
 const WORD_ENTRY_POST_ROW = {
@@ -44,6 +45,22 @@ const WORD_ENTRY_POST_ROW = {
   deletedAt: null,
   textMessage: null,
   wordEntry: { term: 'Feierabend', lang: 'de', translation: 'fin de journée de travail', note: null },
+  attachments: [],
+};
+
+const MEME_POST_ROW = {
+  id: 'post-3',
+  channelId: 'channel-3',
+  authorId: 'user-1',
+  type: 'memes',
+  createdAt: new Date('2026-07-31T01:00:00.000Z'),
+  editedAt: null,
+  deletedAt: null,
+  textMessage: null,
+  wordEntry: null,
+  attachments: [
+    { url: '/uploads/abc.webp', thumbUrl: '/uploads/abc-thumb.webp', mime: 'image/webp', width: 800, height: 600 },
+  ],
 };
 
 describe('PostsService.create — salon text', () => {
@@ -103,16 +120,6 @@ describe('PostsService.create — salon text', () => {
     expect(create).not.toHaveBeenCalled();
   });
 
-  it("rejette (400) un salon qui n'accepte pas encore la création de post", async () => {
-    const findUniqueChannel = jest.fn().mockResolvedValue({ id: 'channel-1', type: 'memes' });
-    const create = jest.fn();
-    const prismaMock = { channel: { findUnique: findUniqueChannel }, post: { create } };
-
-    await expect(
-      createService(prismaMock).create('channel-1', 'user-1', { body: 'salut' }),
-    ).rejects.toBeInstanceOf(BadRequestException);
-    expect(create).not.toHaveBeenCalled();
-  });
 });
 
 describe('PostsService.create — salon word_of_day (M4-T1)', () => {
@@ -203,6 +210,96 @@ describe('PostsService.create — salon word_of_day (M4-T1)', () => {
 
     await expect(
       createService(prismaMock).create('channel-2', 'user-1', dto),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(create).not.toHaveBeenCalled();
+  });
+});
+
+describe('PostsService.create — salon memes (M5-T2)', () => {
+  it('crée un post mème (avec légende), le diffuse en direct et le renvoie', async () => {
+    const findUniqueChannel = jest.fn().mockResolvedValue({ id: 'channel-3', type: 'memes' });
+    const create = jest.fn().mockResolvedValue(MEME_POST_ROW);
+    const emitPostCreated = jest.fn();
+    const prismaMock = { channel: { findUnique: findUniqueChannel }, post: { create } };
+
+    const result = await createService(prismaMock, { emitPostCreated }).create(
+      'channel-3',
+      'user-1',
+      {
+        url: '/uploads/abc.webp',
+        thumbUrl: '/uploads/abc-thumb.webp',
+        mime: 'image/webp',
+        width: 800,
+        height: 600,
+        body: 'regardez ça',
+      },
+    );
+
+    expect(create).toHaveBeenCalledWith({
+      data: {
+        channelId: 'channel-3',
+        authorId: 'user-1',
+        type: 'memes',
+        attachments: {
+          create: {
+            url: '/uploads/abc.webp',
+            thumbUrl: '/uploads/abc-thumb.webp',
+            mime: 'image/webp',
+            width: 800,
+            height: 600,
+          },
+        },
+        textMessage: { create: { body: 'regardez ça' } },
+      },
+      include: POST_INCLUDE,
+    });
+    expect(result).toEqual({
+      id: 'post-3',
+      channelId: 'channel-3',
+      authorId: 'user-1',
+      type: 'memes',
+      attachment: {
+        url: '/uploads/abc.webp',
+        thumbUrl: '/uploads/abc-thumb.webp',
+        mime: 'image/webp',
+        width: 800,
+        height: 600,
+      },
+      caption: null,
+      createdAt: '2026-07-31T01:00:00.000Z',
+      editedAt: null,
+      deletedAt: null,
+    });
+    expect(emitPostCreated).toHaveBeenCalledWith('channel-3', { post: result });
+  });
+
+  it('crée un post mème sans légende (caption optionnelle)', async () => {
+    const findUniqueChannel = jest.fn().mockResolvedValue({ id: 'channel-3', type: 'memes' });
+    const create = jest.fn().mockResolvedValue({ ...MEME_POST_ROW, textMessage: null });
+    const prismaMock = { channel: { findUnique: findUniqueChannel }, post: { create } };
+
+    await createService(prismaMock).create('channel-3', 'user-1', {
+      url: '/uploads/abc.webp',
+      mime: 'image/webp',
+    });
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.not.objectContaining({ textMessage: expect.anything() }),
+      }),
+    );
+  });
+
+  it.each([
+    ['url manquante', { mime: 'image/webp' as const }],
+    ['mime manquant', { url: '/uploads/abc.webp' }],
+  ])('rejette (400) un mème incomplet : %s', async (_label, dto) => {
+    const findUniqueChannel = jest.fn().mockResolvedValue({ id: 'channel-3', type: 'memes' });
+    const create = jest.fn();
+    const prismaMock = { channel: { findUnique: findUniqueChannel }, post: { create } };
+
+    await expect(
+      createService(prismaMock).create('channel-3', 'user-1', dto),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(create).not.toHaveBeenCalled();
   });

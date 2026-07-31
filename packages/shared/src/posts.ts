@@ -19,9 +19,28 @@ export interface WordEntryPostDto extends PostSummaryDto {
   note: string | null;
 }
 
-// Union des types de post supportés côté API. `memes` rejoindra l'union en
-// M5-T2.
-export type PostDto = TextPostDto | WordEntryPostDto;
+// Fichier attaché à un post `memes` (voir doc/SPEC.md §4, table `attachments`).
+// Produit par `POST /uploads` (M5-T1) puis référencé tel quel à la création
+// du post (M5-T2) — pas de re-upload, juste la métadonnée déjà connue.
+export interface AttachmentDto {
+  url: string;
+  thumbUrl: string | null;
+  mime: string;
+  width: number | null;
+  height: number | null;
+}
+
+// Contenu typé pour un post de salon `memes` (M5-T2) : une image/gif
+// (`attachments`) avec une légende optionnelle (réutilise `text_messages`,
+// décision actée en SPEC.md §4).
+export interface MemePostDto extends PostSummaryDto {
+  type: 'memes';
+  attachment: AttachmentDto;
+  caption: string | null;
+}
+
+// Union des types de post supportés côté API.
+export type PostDto = TextPostDto | WordEntryPostDto | MemePostDto;
 
 export interface CreateTextPostRequestDto {
   body: string;
@@ -38,9 +57,24 @@ export interface CreateWordEntryRequestDto {
   note?: string;
 }
 
+// Reprend tel quel le résultat de `POST /uploads` (M5-T1) : le front uploade
+// d'abord le fichier, puis crée le post avec cette métadonnée + une légende
+// optionnelle.
+export interface CreateMemePostRequestDto {
+  url: string;
+  thumbUrl?: string;
+  mime: string;
+  width?: number;
+  height?: number;
+  caption?: string;
+}
+
 // Requête générique de création de post : le champ pertinent dépend du
 // `type` réel du salon ciblé, résolu côté serveur.
-export type CreatePostRequestDto = CreateTextPostRequestDto | CreateWordEntryRequestDto;
+export type CreatePostRequestDto =
+  | CreateTextPostRequestDto
+  | CreateWordEntryRequestDto
+  | CreateMemePostRequestDto;
 
 export interface PostsPageDto {
   posts: PostDto[];
