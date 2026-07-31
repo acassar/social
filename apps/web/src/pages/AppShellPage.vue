@@ -50,8 +50,10 @@ async function onLogout(): Promise<void> {
 
 <template>
   <v-navigation-drawer permanent width="260">
-    <v-list-subheader>Salons</v-list-subheader>
     <v-list nav density="compact">
+      <!-- Le subheader tire son indentation du contexte de la v-list : hors
+           d'elle, il retombe à padding-inline-start: 0 et colle au bord. -->
+      <v-list-subheader>Salons</v-list-subheader>
       <v-list-item
         v-for="channel in channelsStore.sortedChannels"
         :key="channel.id"

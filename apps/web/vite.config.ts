@@ -34,7 +34,12 @@ export default defineConfig({
       workbox: {
         // App shell (HTML/JS/CSS/icons) précaché ; l'API (autre origine) reste en network-first
         // pour ne jamais servir de données périmées quand le réseau est là.
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
+        // woff2 inclus : Roboto et Material Design Icons sont servies en local,
+        // sans elles hors ligne la typo et toutes les icônes tombent. woff2
+        // seulement — un navigateur ne télécharge qu'un format, et tous ceux
+        // qui savent installer une PWA le gèrent ; précacher aussi woff/ttf/eot
+        // doublerait le poids sans jamais servir.
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest,woff2}'],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.origin !== self.location.origin,

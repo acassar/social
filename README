@@ -213,7 +213,16 @@ cp apps/web/.env.example apps/web/.env
 pnpm --filter web dev   # sert l'app Vue sur http://localhost:5173
 ```
 
-Vue 3 + Vite + TypeScript + Vuetify (thème sombre par défaut). Router
+Vue 3 + Vite + TypeScript + Vuetify (thème sombre par défaut). Polices
+servies en local, jamais depuis un CDN — l'app est une PWA qui doit tenir
+hors ligne : Roboto via `@fontsource` (sous-ensembles latin/latin-ext
+seulement, les autres pèsent ~2,4 Mo pour rien) et Material Design Icons via
+`@mdi/font`, le jeu d'icônes par défaut de Vuetify qu'il ne fournit pas
+lui-même. Les deux sont importées dans `src/plugins/vuetify.ts` ; sans elles
+tout `prepend-icon`/`v-icon` réserve sa place et n'affiche rien. Seuls les
+`woff2` sont précachés par le service worker (cf. `vite.config.ts`).
+
+Router
 (`vue-router`) avec deux pages publiques — `/login` (se connecter) et `/join`
 (rejoindre avec un code d'invitation, pré-remplie depuis `?code=`) — et une
 page protégée `/app`, gardée par un guard de navigation qui consulte le
