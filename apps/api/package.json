@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start:dev": "tsx watch src/main.ts",
+    "start:dev": "node --import @swc-node/register/esm-register --watch src/main.ts",
     "typecheck": "tsc --noEmit",
     "build": "tsc",
     "test": "jest",
@@ -36,6 +36,8 @@
   },
   "devDependencies": {
     "@nestjs/testing": "^11.1.28",
+    "@swc-node/register": "^1.12.1",
+    "@swc/core": "^1.15.47",
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/multer": "^2.2.0",

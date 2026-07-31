@@ -12,6 +12,9 @@ import { MeController } from './me.controller';
   imports: [JwtModule.register({})],
   controllers: [AuthController, MeController],
   providers: [AuthService, JwtAuthGuard],
-  exports: [JwtAuthGuard],
+  // JwtModule est réexporté : `@UseGuards(JwtAuthGuard)` fait instancier le
+  // guard dans le contexte du module hôte (channels, posts, uploads, ...),
+  // qui doit donc pouvoir résoudre JwtService lui-même.
+  exports: [JwtAuthGuard, JwtModule],
 })
 export class AuthModule {}

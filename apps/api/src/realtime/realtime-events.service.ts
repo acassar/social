@@ -9,7 +9,7 @@ import {
   type ReactionRemovedEvent,
   type RealtimeEventPayloadMap,
 } from '@social/shared';
-import { channelRoom } from './realtime.gateway';
+import { channelRoom } from './rooms';
 
 /**
  * Émetteur central des événements temps réel (M2-T3). Les modules métier

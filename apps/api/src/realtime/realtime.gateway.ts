@@ -9,11 +9,10 @@ import {
 import type { Server, Socket } from 'socket.io';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeEventsService } from './realtime-events.service';
+import { channelRoom } from './rooms';
 import { WsJwtGuard } from './ws-jwt.guard';
 
-export function channelRoom(channelId: string): string {
-  return `channel:${channelId}`;
-}
+export { channelRoom };
 
 @WebSocketGateway({ cors: true })
 export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
