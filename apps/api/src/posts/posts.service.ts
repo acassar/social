@@ -19,9 +19,16 @@ interface PostRow {
   deletedAt: Date | null;
   textMessage: { body: string } | null;
   wordEntry: { term: string; lang: string; translation: string; note: string | null } | null;
+  attachments: {
+    url: string;
+    thumbUrl: string | null;
+    mime: string;
+    width: number | null;
+    height: number | null;
+  }[];
 }
 
-const POST_INCLUDE = { textMessage: true, wordEntry: true } as const;
+const POST_INCLUDE = { textMessage: true, wordEntry: true, attachments: true } as const;
 
 @Injectable()
 export class PostsService {
@@ -68,6 +75,33 @@ export class PostsService {
               note: dto.note ?? null,
             },
           },
+        },
+        include: POST_INCLUDE,
+      });
+      const result = this.toDto(post);
+      this.realtimeEvents.emitPostCreated(channelId, { post: result });
+      return result;
+    }
+
+    if (channel.type === 'memes') {
+      if (!dto.url || !dto.mime) {
+        throw new BadRequestException('url et mime sont requis pour un salon de type memes');
+      }
+      const post = await this.prisma.post.create({
+        data: {
+          channelId,
+          authorId,
+          type: 'memes',
+          attachments: {
+            create: {
+              url: dto.url,
+              thumbUrl: dto.thumbUrl ?? null,
+              mime: dto.mime,
+              width: dto.width ?? null,
+              height: dto.height ?? null,
+            },
+          },
+          ...(dto.body ? { textMessage: { create: { body: dto.body } } } : {}),
         },
         include: POST_INCLUDE,
       });
@@ -162,6 +196,22 @@ export class PostsService {
         lang: post.wordEntry.lang as NativeLang,
         translation: post.wordEntry.translation,
         note: post.wordEntry.note,
+      };
+    }
+
+    if (post.type === 'memes' && post.attachments[0]) {
+      const attachment = post.attachments[0];
+      return {
+        ...base,
+        type: 'memes',
+        attachment: {
+          url: attachment.url,
+          thumbUrl: attachment.thumbUrl,
+          mime: attachment.mime,
+          width: attachment.width,
+          height: attachment.height,
+        },
+        caption: post.textMessage?.body ?? null,
       };
     }
 
