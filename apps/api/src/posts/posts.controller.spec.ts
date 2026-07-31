@@ -246,6 +246,62 @@ describe('PostsController', () => {
     expect(createMock).not.toHaveBeenCalled();
   });
 
+  it('POST /channels/:id/posts crée un post mème (M5-T2)', async () => {
+    findChannelMock.mockResolvedValue({ id: 'channel-3', groupId: 'group-1' });
+    findMembershipMock.mockResolvedValue({ role: 'member' });
+    createMock.mockResolvedValue({
+      id: 'post-3',
+      channelId: 'channel-3',
+      authorId: 'user-1',
+      type: 'memes',
+      attachment: {
+        url: '/uploads/abc.webp',
+        thumbUrl: '/uploads/abc-thumb.webp',
+        mime: 'image/webp',
+        width: 800,
+        height: 600,
+      },
+      caption: 'regardez ça',
+      createdAt: '2026-07-31T00:00:00.000Z',
+      editedAt: null,
+      deletedAt: null,
+    });
+    const token = await accessTokenFor('user-1');
+
+    const response = await request(app.getHttpServer())
+      .post('/channels/channel-3/posts')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        url: '/uploads/abc.webp',
+        thumbUrl: '/uploads/abc-thumb.webp',
+        mime: 'image/webp',
+        width: 800,
+        height: 600,
+        body: 'regardez ça',
+      });
+
+    expect(response.status).toBe(201);
+    expect(createMock).toHaveBeenCalledWith(
+      'channel-3',
+      'user-1',
+      expect.objectContaining({ url: '/uploads/abc.webp', mime: 'image/webp' }),
+    );
+  });
+
+  it('POST /channels/:id/posts renvoie 400 pour un mime non supporté', async () => {
+    findChannelMock.mockResolvedValue({ id: 'channel-3', groupId: 'group-1' });
+    findMembershipMock.mockResolvedValue({ role: 'member' });
+    const token = await accessTokenFor('user-1');
+
+    const response = await request(app.getHttpServer())
+      .post('/channels/channel-3/posts')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ url: '/uploads/abc.exe', mime: 'application/octet-stream' });
+
+    expect(response.status).toBe(400);
+    expect(createMock).not.toHaveBeenCalled();
+  });
+
   it('PATCH /channels/:id/posts/:postId met à jour le message', async () => {
     findChannelMock.mockResolvedValue({ id: 'channel-1', groupId: 'group-1' });
     findMembershipMock.mockResolvedValue({ role: 'member' });

@@ -1,9 +1,11 @@
 import './pinia';
 import { defineStore } from 'pinia';
 import type {
+  CreateMemePostRequestDto,
   CreateReactionRequestDto,
   CreateTextPostRequestDto,
   CreateWordEntryRequestDto,
+  MemePostDto,
   PostCreatedEvent,
   PostDeletedEvent,
   PostDto,
@@ -24,6 +26,10 @@ export function isTextPost(post: PostDto): post is TextPostDto {
 
 export function isWordEntryPost(post: PostDto): post is WordEntryPostDto {
   return post.type === 'word_of_day';
+}
+
+export function isMemePost(post: PostDto): post is MemePostDto {
+  return post.type === 'memes';
 }
 
 interface PostsState {
@@ -130,6 +136,15 @@ export const usePostsStore = defineStore('posts', {
         return;
       }
       const post = await http.post<WordEntryPostDto>(`/channels/${channelId}/posts`, payload);
+      this.handlePostCreated({ post });
+    },
+
+    async postMeme(payload: CreateMemePostRequestDto): Promise<void> {
+      const channelId = this.channelId;
+      if (!channelId || !payload.url.trim() || !payload.mime.trim()) {
+        return;
+      }
+      const post = await http.post<MemePostDto>(`/channels/${channelId}/posts`, payload);
       this.handlePostCreated({ post });
     },
 

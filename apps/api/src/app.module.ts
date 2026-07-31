@@ -10,6 +10,7 @@ import { PostsModule } from './posts/posts.module';
 import { ReactionsModule } from './reactions/reactions.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { GlossaryModule } from './glossary/glossary.module';
+import { UploadsModule } from './uploads/uploads.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { GlossaryModule } from './glossary/glossary.module';
     ReactionsModule,
     RealtimeModule,
     GlossaryModule,
+    UploadsModule,
   ],
 })
 export class AppModule {}
