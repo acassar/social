@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router';
 import { useChannelsStore } from '@/stores/channels';
 import TextChannelView from '@/components/TextChannelView.vue';
 import WordChannelView from '@/components/WordChannelView.vue';
+import MemeChannelView from '@/components/MemeChannelView.vue';
 
 const route = useRoute();
 const channelsStore = useChannelsStore();
@@ -16,6 +17,11 @@ const channelId = computed(() => String(route.params.channelId));
   <TextChannelView v-if="channel?.type === 'text'" :channel-id="channelId" class="fill-height" />
   <WordChannelView
     v-else-if="channel?.type === 'word_of_day'"
+    :channel-id="channelId"
+    class="fill-height"
+  />
+  <MemeChannelView
+    v-else-if="channel?.type === 'memes'"
     :channel-id="channelId"
     class="fill-height"
   />

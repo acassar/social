@@ -45,6 +45,36 @@ const wordPost = (
   ...overrides,
 });
 
+const memePost = (
+  overrides: Partial<{
+    id: string;
+    channelId: string;
+    authorId: string;
+    url: string;
+    thumbUrl: string | null;
+    mime: string;
+    caption: string | null;
+    createdAt: string;
+  }> = {},
+) => ({
+  id: 'm1',
+  channelId: 'c1',
+  authorId: 'u1',
+  type: 'memes' as const,
+  attachment: {
+    url: overrides.url ?? '/uploads/a.png',
+    thumbUrl: overrides.thumbUrl ?? '/uploads/a-thumb.webp',
+    mime: overrides.mime ?? 'image/png',
+    width: 100,
+    height: 100,
+  },
+  caption: overrides.caption ?? null,
+  createdAt: overrides.createdAt ?? '2026-07-31T10:00:00.000Z',
+  editedAt: null,
+  deletedAt: null,
+  ...overrides,
+});
+
 describe('posts store', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
@@ -171,6 +201,24 @@ describe('posts store', () => {
     await store.loadChannel('c1');
 
     expect(store.posts).toEqual([wordPost()]);
+  });
+
+  it('postMeme posts the meme referencing an already-uploaded file and applies it locally without duplicating the realtime echo', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ posts: [], nextCursor: null }))
+      .mockResolvedValueOnce(jsonResponse(memePost(), 201));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const store = usePostsStore();
+    await store.loadChannel('c1');
+    await store.postMeme({ url: '/uploads/a.png', mime: 'image/png', caption: 'lol' });
+
+    expect(store.posts).toHaveLength(1);
+    expect(store.posts[0]).toMatchObject({ type: 'memes', attachment: { url: '/uploads/a.png' } });
+
+    store.handlePostCreated({ post: memePost() });
+    expect(store.posts).toHaveLength(1);
   });
 
   it('handlePostDeleted removes the post and its reactions', () => {

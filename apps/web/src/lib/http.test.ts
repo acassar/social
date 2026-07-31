@@ -94,6 +94,25 @@ describe('http client', () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
+  it('uploads a FormData body as multipart without forcing a Content-Type', async () => {
+    setTokens({ accessToken: 'access-1' });
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ url: '/uploads/a.png' }), { status: 201 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const formData = new FormData();
+    formData.append('file', new File(['x'], 'a.png', { type: 'image/png' }));
+
+    const result = await http.upload<{ url: string }>('/uploads', formData);
+
+    expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/uploads', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer access-1' },
+      body: formData,
+    });
+    expect(result).toEqual({ url: '/uploads/a.png' });
+  });
+
   it('clears tokens and throws when the refresh token is also invalid', async () => {
     setTokens({ accessToken: 'expired', refreshToken: 'also-expired' });
 
