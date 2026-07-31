@@ -1,0 +1,131 @@
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { setActivePinia, createPinia } from 'pinia';
+import { usePostsStore } from './posts';
+import { useAuthStore } from './auth';
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(body === undefined ? null : JSON.stringify(body), { status });
+}
+
+const textPost = (overrides: Partial<{ id: string; channelId: string; authorId: string; body: string; createdAt: string }> = {}) => ({
+  id: 'p1',
+  channelId: 'c1',
+  authorId: 'u1',
+  type: 'text' as const,
+  body: 'hello',
+  createdAt: '2026-07-31T10:00:00.000Z',
+  editedAt: null,
+  deletedAt: null,
+  ...overrides,
+});
+
+describe('posts store', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('loads the first page of a channel', async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({ posts: [textPost()], nextCursor: 'p1' }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const store = usePostsStore();
+    await store.loadChannel('c1');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:3000/channels/c1/posts',
+      expect.objectContaining({ method: 'GET' }),
+    );
+    expect(store.posts).toHaveLength(1);
+    expect(store.nextCursor).toBe('p1');
+    expect(store.loading).toBe(false);
+  });
+
+  it('appends the next page without duplicating posts on loadMore', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ posts: [textPost()], nextCursor: 'p1' }))
+      .mockResolvedValueOnce(
+        jsonResponse({ posts: [textPost({ id: 'p1' }), textPost({ id: 'p2' })], nextCursor: null }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const store = usePostsStore();
+    await store.loadChannel('c1');
+    await store.loadMore();
+
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://localhost:3000/channels/c1/posts?cursor=p1',
+      expect.objectContaining({ method: 'GET' }),
+    );
+    expect(store.posts.map((p) => p.id)).toEqual(['p1', 'p2']);
+    expect(store.nextCursor).toBeNull();
+  });
+
+  it('sendMessage posts the message and applies it locally without duplicating the realtime echo', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ posts: [], nextCursor: null }))
+      .mockResolvedValueOnce(jsonResponse(textPost(), 201));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const store = usePostsStore();
+    await store.loadChannel('c1');
+    await store.sendMessage('hello');
+
+    expect(store.posts).toHaveLength(1);
+
+    store.handlePostCreated({ post: textPost() });
+    expect(store.posts).toHaveLength(1);
+  });
+
+  it('ignores post events from another channel', () => {
+    const store = usePostsStore();
+    store.channelId = 'c1';
+
+    store.handlePostCreated({ post: textPost({ channelId: 'other' }) });
+
+    expect(store.posts).toHaveLength(0);
+  });
+
+  it('toggleReaction adds then removes a reaction for the current user', async () => {
+    const store = usePostsStore();
+    const authStore = useAuthStore();
+    authStore.user = { id: 'u1', displayName: 'Alice', nativeLang: 'fr', groupId: 'g1' };
+    store.channelId = 'c1';
+    store.posts = [textPost()];
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ id: 'r1', postId: 'p1', userId: 'u1', emoji: '👍' }, 201))
+      .mockResolvedValueOnce(jsonResponse(undefined, 204));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await store.toggleReaction('p1', '👍');
+    expect(store.reactionsByPost.p1).toEqual([{ id: 'r1', postId: 'p1', userId: 'u1', emoji: '👍' }]);
+
+    await store.toggleReaction('p1', '👍');
+    expect(store.reactionsByPost.p1).toEqual([]);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://localhost:3000/posts/p1/reactions/%F0%9F%91%8D',
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+  });
+
+  it('handlePostDeleted removes the post and its reactions', () => {
+    const store = usePostsStore();
+    store.channelId = 'c1';
+    store.posts = [textPost()];
+    store.reactionsByPost = { p1: [{ id: 'r1', postId: 'p1', userId: 'u1', emoji: '👍' }] };
+
+    store.handlePostDeleted({ postId: 'p1', channelId: 'c1' });
+
+    expect(store.posts).toHaveLength(0);
+    expect(store.reactionsByPost.p1).toBeUndefined();
+  });
+});

@@ -2,17 +2,20 @@
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useChannelsStore } from '@/stores/channels';
+import TextChannelView from '@/components/TextChannelView.vue';
 
 const route = useRoute();
 const channelsStore = useChannelsStore();
 
 const channel = computed(() => channelsStore.channels.find((c) => c.id === route.params.channelId));
+const channelId = computed(() => String(route.params.channelId));
 </script>
 
 <template>
-  <v-container v-if="channel" fluid>
+  <TextChannelView v-if="channel?.type === 'text'" :channel-id="channelId" class="fill-height" />
+  <v-container v-else-if="channel" fluid>
     <p class="text-body-2 text-medium-emphasis">
-      Salon « {{ channel.name }} » — pas encore de contenu (arrive avec M3+).
+      Salon « {{ channel.name }} » — pas encore de contenu (arrive avec M4/M5).
     </p>
   </v-container>
   <v-container v-else class="fill-height" fluid>
