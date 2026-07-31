@@ -8,6 +8,9 @@ export interface EnvironmentVariables {
   JWT_REFRESH_EXPIRES_IN: string;
   UPLOADS_DIR: string;
   CORS_ORIGINS: string[];
+  VAPID_PUBLIC_KEY: string | null;
+  VAPID_PRIVATE_KEY: string | null;
+  VAPID_SUBJECT: string;
 }
 
 const VALID_NODE_ENVS: EnvironmentVariables['NODE_ENV'][] = ['development', 'test', 'production'];
@@ -60,6 +63,14 @@ export function validateEnv(rawEnv: Record<string, unknown>): EnvironmentVariabl
     throw new Error(`CORS_ORIGINS invalide : "${rawCorsOrigins}" (attendu au moins une origine)`);
   }
 
+  // Web Push (M6-T2) — optionnel : sans clés VAPID, PushService loggue un
+  // avertissement et n'envoie aucune notification (l'opt-in par salon reste
+  // fonctionnel, seul l'envoi effectif est désactivé). À générer via
+  // `npx web-push generate-vapid-keys` pour un vrai déploiement.
+  const vapidPublicKey = (rawEnv.VAPID_PUBLIC_KEY as string | undefined) || null;
+  const vapidPrivateKey = (rawEnv.VAPID_PRIVATE_KEY as string | undefined) || null;
+  const vapidSubject = (rawEnv.VAPID_SUBJECT as string | undefined) || 'mailto:admin@example.com';
+
   return {
     NODE_ENV: nodeEnv as EnvironmentVariables['NODE_ENV'],
     PORT: port,
@@ -70,5 +81,8 @@ export function validateEnv(rawEnv: Record<string, unknown>): EnvironmentVariabl
     JWT_REFRESH_EXPIRES_IN: jwtRefreshExpiresIn,
     UPLOADS_DIR: uploadsDir,
     CORS_ORIGINS: corsOrigins,
+    VAPID_PUBLIC_KEY: vapidPublicKey,
+    VAPID_PRIVATE_KEY: vapidPrivateKey,
+    VAPID_SUBJECT: vapidSubject,
   };
 }

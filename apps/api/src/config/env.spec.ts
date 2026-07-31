@@ -17,6 +17,9 @@ describe('validateEnv', () => {
       JWT_REFRESH_EXPIRES_IN: '30d',
       UPLOADS_DIR: './uploads',
       CORS_ORIGINS: ['http://localhost:5173'],
+      VAPID_PUBLIC_KEY: null,
+      VAPID_PRIVATE_KEY: null,
+      VAPID_SUBJECT: 'mailto:admin@example.com',
     });
   });
 
@@ -30,6 +33,9 @@ describe('validateEnv', () => {
         JWT_REFRESH_EXPIRES_IN: '7d',
         UPLOADS_DIR: '/var/data/uploads',
         CORS_ORIGINS: 'https://social.example, https://www.social.example',
+        VAPID_PUBLIC_KEY: 'pub-key',
+        VAPID_PRIVATE_KEY: 'priv-key',
+        VAPID_SUBJECT: 'mailto:ops@social.example',
       }),
     ).toEqual({
       NODE_ENV: 'production',
@@ -41,6 +47,9 @@ describe('validateEnv', () => {
       JWT_REFRESH_EXPIRES_IN: '7d',
       UPLOADS_DIR: '/var/data/uploads',
       CORS_ORIGINS: ['https://social.example', 'https://www.social.example'],
+      VAPID_PUBLIC_KEY: 'pub-key',
+      VAPID_PRIVATE_KEY: 'priv-key',
+      VAPID_SUBJECT: 'mailto:ops@social.example',
     });
   });
 

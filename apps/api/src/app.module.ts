@@ -11,6 +11,7 @@ import { ReactionsModule } from './reactions/reactions.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { GlossaryModule } from './glossary/glossary.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { PushModule } from './push/push.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { UploadsModule } from './uploads/uploads.module';
     RealtimeModule,
     GlossaryModule,
     UploadsModule,
+    PushModule,
   ],
 })
 export class AppModule {}
