@@ -66,6 +66,7 @@ describe('RealtimeEventsService (intégration Socket.io réelle)', () => {
           channelId,
           authorId: 'user-1',
           type: 'text' as const,
+          body: 'salut',
           createdAt: new Date().toISOString(),
           editedAt: null,
           deletedAt: null,
