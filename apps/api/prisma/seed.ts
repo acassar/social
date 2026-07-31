@@ -37,8 +37,30 @@ async function main(): Promise<void> {
     },
   });
 
+  // Un salon par type, sinon le shell est vide une fois connecté et rien de
+  // M3/M4/M5 n'est atteignable (aucun endpoint de création de group/salon
+  // n'est exposé au premier lancement).
+  const channels = [
+    { id: '00000000-0000-0000-0000-000000000010', name: 'général', type: 'text' as const },
+    {
+      id: '00000000-0000-0000-0000-000000000011',
+      name: 'mot-du-jour',
+      type: 'word_of_day' as const,
+    },
+    { id: '00000000-0000-0000-0000-000000000012', name: 'mèmes', type: 'memes' as const },
+  ];
+
+  for (const [position, channel] of channels.entries()) {
+    await prisma.channel.upsert({
+      where: { id: channel.id },
+      update: {},
+      create: { ...channel, groupId: group.id, position },
+    });
+  }
+
   console.log(
-    `Seed OK : group "${group.name}" (${group.id}), owner "${owner.displayName}" (${owner.id})`,
+    `Seed OK : group "${group.name}" (${group.id}), owner "${owner.displayName}" (${owner.id}), ` +
+      `salons ${channels.map((channel) => `#${channel.name}`).join(', ')}`,
   );
 }
 

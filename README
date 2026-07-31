@@ -49,10 +49,26 @@ pnpm --filter api start:dev   # démarre l'app NestJS (watch), GET /health -> { 
 
 Variables d'environnement (voir `apps/api/.env.example`) : `NODE_ENV`, `PORT`,
 `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_ACCESS_EXPIRES_IN`,
-`JWT_REFRESH_SECRET`, `JWT_REFRESH_EXPIRES_IN`. Chargées et validées via
-`ConfigModule` (`@nestjs/config`). Structure de modules vide prête à
-accueillir la logique métier : `groups`, `channels`, `posts`, `reactions`,
-`realtime`.
+`JWT_REFRESH_SECRET`, `JWT_REFRESH_EXPIRES_IN`, `UPLOADS_DIR`,
+`CORS_ORIGINS`. Chargées et validées via `ConfigModule` (`@nestjs/config`).
+
+`CORS_ORIGINS` liste les origines autorisées à appeler l'API depuis un
+navigateur, séparées par des virgules (défaut : `http://localhost:5173`, le
+serveur Vite). Le front et l'API étant servis sur des origines distinctes,
+sans CORS le navigateur bloque tous les appels REST, login compris.
+
+Le serveur de dev tourne sous SWC (`@swc-node/register`, config dans
+`apps/api/.swcrc`) et non sous `tsx` : NestJS s'appuie sur
+`emitDecoratorMetadata` pour l'injection par constructeur, or esbuild — sur
+lequel repose `tsx` — ne l'implémente pas. Sans ces métadonnées, toutes les
+dépendances injectées valent `undefined` au démarrage. `tsx` reste utilisé
+pour le seed Prisma, qui n'a pas de DI.
+
+Modules métier : `groups`, `channels`, `posts`, `reactions`, `realtime`,
+`glossary`, `uploads`. Chacun importe `AuthModule` s'il protège des routes
+par `@UseGuards(JwtAuthGuard)` — Nest instancie un guard référencé par classe
+dans le contexte du module hôte, qui doit donc pouvoir résoudre `JwtService`
+lui-même (d'où le réexport de `JwtModule` par `AuthModule`).
 
 ### Auth
 
@@ -168,7 +184,7 @@ l'ORM et les migrations sont gérés par [Prisma](https://www.prisma.io/)
 ```
 pnpm db:up        # démarre Postgres (docker compose up -d)
 pnpm db:migrate    # applique les migrations Prisma en dev (prisma migrate dev)
-pnpm db:seed       # insère les données de dev (un group + un owner)
+pnpm db:seed       # insère les données de dev (group, owner, un salon par type)
 pnpm db:down       # arrête Postgres
 ```
 
@@ -177,6 +193,12 @@ reste du modèle — `channels`, `posts`, ... — arrivera avec les migrations d
 tâches qui en ont besoin). Le client Prisma est généré dans
 `apps/api/src/generated/prisma` (non versionné, régénéré via `postinstall`
 — `prisma generate`).
+
+Le seed (`apps/api/prisma/seed.ts`) crée de quoi ouvrir l'app immédiatement :
+le group « Dev Group », un owner (`Dev Owner` / `devpassword`) et un salon par
+type (`#général` texte, `#mot-du-jour`, `#mèmes`). Sans ces salons le shell est
+vide une fois connecté, aucun endpoint de création de group n'étant exposé.
+Idempotent (`upsert`), donc rejouable.
 
 ## Web (`apps/web`)
 

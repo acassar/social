@@ -7,6 +7,7 @@ export interface EnvironmentVariables {
   JWT_REFRESH_SECRET: string;
   JWT_REFRESH_EXPIRES_IN: string;
   UPLOADS_DIR: string;
+  CORS_ORIGINS: string[];
 }
 
 const VALID_NODE_ENVS: EnvironmentVariables['NODE_ENV'][] = ['development', 'test', 'production'];
@@ -46,6 +47,19 @@ export function validateEnv(rawEnv: Record<string, unknown>): EnvironmentVariabl
   // proxy sous /uploads (cf. doc/BACKLOG.md M5-T1/M7-T2).
   const uploadsDir = (rawEnv.UPLOADS_DIR as string | undefined) ?? './uploads';
 
+  // Origines autorisées à appeler l'API depuis un navigateur, séparées par des
+  // virgules. Le front (Vite) et l'API tournent sur des ports distincts en dev,
+  // donc toute requête du front est cross-origin ; en prod, l'URL publique du
+  // front. Liste explicite plutôt que `*` : le front envoie un Bearer token.
+  const rawCorsOrigins = (rawEnv.CORS_ORIGINS as string | undefined) ?? 'http://localhost:5173';
+  const corsOrigins = rawCorsOrigins
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
+  if (corsOrigins.length === 0) {
+    throw new Error(`CORS_ORIGINS invalide : "${rawCorsOrigins}" (attendu au moins une origine)`);
+  }
+
   return {
     NODE_ENV: nodeEnv as EnvironmentVariables['NODE_ENV'],
     PORT: port,
@@ -55,5 +69,6 @@ export function validateEnv(rawEnv: Record<string, unknown>): EnvironmentVariabl
     JWT_REFRESH_SECRET: jwtRefreshSecret,
     JWT_REFRESH_EXPIRES_IN: jwtRefreshExpiresIn,
     UPLOADS_DIR: uploadsDir,
+    CORS_ORIGINS: corsOrigins,
   };
 }

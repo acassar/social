@@ -16,6 +16,7 @@ describe('validateEnv', () => {
       JWT_REFRESH_SECRET,
       JWT_REFRESH_EXPIRES_IN: '30d',
       UPLOADS_DIR: './uploads',
+      CORS_ORIGINS: ['http://localhost:5173'],
     });
   });
 
@@ -28,6 +29,7 @@ describe('validateEnv', () => {
         JWT_ACCESS_EXPIRES_IN: '5m',
         JWT_REFRESH_EXPIRES_IN: '7d',
         UPLOADS_DIR: '/var/data/uploads',
+        CORS_ORIGINS: 'https://social.example, https://www.social.example',
       }),
     ).toEqual({
       NODE_ENV: 'production',
@@ -38,6 +40,7 @@ describe('validateEnv', () => {
       JWT_REFRESH_SECRET,
       JWT_REFRESH_EXPIRES_IN: '7d',
       UPLOADS_DIR: '/var/data/uploads',
+      CORS_ORIGINS: ['https://social.example', 'https://www.social.example'],
     });
   });
 
@@ -66,6 +69,12 @@ describe('validateEnv', () => {
   it('rejette un JWT_REFRESH_SECRET manquant', () => {
     expect(() => validateEnv({ DATABASE_URL, JWT_ACCESS_SECRET })).toThrow(
       /JWT_REFRESH_SECRET invalide/,
+    );
+  });
+
+  it('rejette un CORS_ORIGINS vide', () => {
+    expect(() => validateEnv({ ...REQUIRED_ENV, CORS_ORIGINS: ' , ' })).toThrow(
+      /CORS_ORIGINS invalide/,
     );
   });
 });
