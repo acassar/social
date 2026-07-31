@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { setTokens, clearTokens } from '@/lib/auth';
 import { useRealtimeStore } from './realtime';
+import { usePostsStore } from './posts';
 
 const { socketMock, ioMock, handlers } = vi.hoisted(() => {
   const handlers = new Map<string, (...args: unknown[]) => void>();
@@ -68,6 +69,29 @@ describe('realtime store', () => {
 
     expect(consoleSpy).toHaveBeenCalledWith('[realtime] post:created', { post: { id: 'p1' } });
     consoleSpy.mockRestore();
+  });
+
+  it('dispatches post and reaction events to the posts store', () => {
+    setTokens({ accessToken: 'access-1' });
+    const store = useRealtimeStore();
+    const postsStore = usePostsStore();
+    postsStore.channelId = 'c1';
+
+    store.connect();
+    handlers.get('post:created')?.({
+      post: {
+        id: 'p1',
+        channelId: 'c1',
+        authorId: 'u1',
+        type: 'text',
+        body: 'hi',
+        createdAt: 't',
+        editedAt: null,
+        deletedAt: null,
+      },
+    });
+
+    expect(postsStore.posts).toHaveLength(1);
   });
 
   it('is idempotent and disconnect() tears the socket down', () => {
