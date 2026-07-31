@@ -9,6 +9,7 @@ import { ChannelsModule } from './channels/channels.module';
 import { PostsModule } from './posts/posts.module';
 import { ReactionsModule } from './reactions/reactions.module';
 import { RealtimeModule } from './realtime/realtime.module';
+import { GlossaryModule } from './glossary/glossary.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { RealtimeModule } from './realtime/realtime.module';
     PostsModule,
     ReactionsModule,
     RealtimeModule,
+    GlossaryModule,
   ],
 })
 export class AppModule {}

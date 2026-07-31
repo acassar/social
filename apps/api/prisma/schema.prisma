@@ -1,7 +1,7 @@
 // Prisma schema — M0-T4 (users, groups, memberships, invites) + M2-T1 (channels)
-// + M3-T1 (posts, text_messages) + M3-T2 (reactions). Le reste du modèle
-// (word_entries, attachments) sera ajouté par les migrations des tâches qui
-// en ont besoin.
+// + M3-T1 (posts, text_messages) + M3-T2 (reactions) + M4-T1 (word_entries).
+// Le reste du modèle (attachments) sera ajouté par les migrations des tâches
+// qui en ont besoin.
 
 generator client {
   provider = "prisma-client"
@@ -112,6 +112,7 @@ model Post {
   channel     Channel      @relation(fields: [channelId], references: [id])
   author      User         @relation(fields: [authorId], references: [id])
   textMessage TextMessage?
+  wordEntry   WordEntry?
   reactions   Reaction[]
 
   @@index([channelId, createdAt])
@@ -125,6 +126,18 @@ model TextMessage {
   post Post @relation(fields: [postId], references: [id])
 
   @@map("text_messages")
+}
+
+model WordEntry {
+  postId      String  @id @map("post_id")
+  term        String
+  lang        Lang
+  translation String
+  note        String?
+
+  post Post @relation(fields: [postId], references: [id])
+
+  @@map("word_entries")
 }
 
 model Reaction {

@@ -11,19 +11,19 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import type { PostsPageDto, TextPostDto } from '@social/shared';
+import type { PostDto, PostsPageDto, TextPostDto } from '@social/shared';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { CurrentUserPayload } from '../auth/jwt-payload';
 import { ChannelMemberGuard } from '../channels/channel-member.guard';
-import { CreateTextPostDto } from './dto/create-text-post.dto';
+import { CreatePostDto } from './dto/create-post.dto';
 import { ListPostsQueryDto } from './dto/list-posts-query.dto';
 import { UpdateTextPostDto } from './dto/update-text-post.dto';
 import { PostsService } from './posts.service';
 
-// Messages d'un salon `text` (M3-T1) : lecture/écriture réservées aux membres
-// du group auquel le salon appartient (ChannelMemberGuard) ; édition/suppression
-// en plus réservées à l'auteur du post (vérifié dans PostsService).
+// Posts d'un salon `text` (M3-T1) ou `word_of_day` (M4-T1) : lecture/écriture
+// réservées aux membres du group auquel le salon appartient (ChannelMemberGuard) ;
+// édition/suppression en plus réservées à l'auteur du post (vérifié dans PostsService).
 @Controller('channels/:id/posts')
 @UseGuards(JwtAuthGuard, ChannelMemberGuard)
 export class PostsController {
@@ -39,9 +39,9 @@ export class PostsController {
   create(
     @Param('id') channelId: string,
     @CurrentUser() user: CurrentUserPayload,
-    @Body() dto: CreateTextPostDto,
-  ): Promise<TextPostDto> {
-    return this.postsService.createTextPost(channelId, user.id, dto);
+    @Body() dto: CreatePostDto,
+  ): Promise<PostDto> {
+    return this.postsService.create(channelId, user.id, dto);
   }
 
   @Patch(':postId')

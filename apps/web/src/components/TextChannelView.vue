@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
-import { usePostsStore } from '@/stores/posts';
+import { isTextPost, usePostsStore } from '@/stores/posts';
 import { useAuthStore } from '@/stores/auth';
 
 const props = defineProps<{ channelId: string }>();
@@ -55,7 +55,7 @@ function formatTime(iso: string): string {
 }
 
 const postsWithReactions = computed(() =>
-  postsStore.posts.map((post) => ({
+  postsStore.posts.filter(isTextPost).map((post) => ({
     post,
     reactions: QUICK_REACTIONS.map((emoji) => {
       const forEmoji = (postsStore.reactionsByPost[post.id] ?? []).filter(
