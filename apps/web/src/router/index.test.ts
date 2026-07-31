@@ -36,4 +36,16 @@ describe('router', () => {
     await router.push('/app');
     expect(router.currentRoute.value.name).toBe('app');
   });
+
+  it('redirects /app/glossary to /login when not authenticated', async () => {
+    await router.push('/app/glossary');
+    expect(router.currentRoute.value.name).toBe('login');
+  });
+
+  it('navigates to /app/glossary when authenticated', async () => {
+    localStorage.setItem('social:accessToken', 'fake-token');
+
+    await router.push('/app/glossary');
+    expect(router.currentRoute.value.name).toBe('glossary');
+  });
 });
