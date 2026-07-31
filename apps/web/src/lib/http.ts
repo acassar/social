@@ -89,6 +89,35 @@ async function request<T>(
   return (await response.json()) as T;
 }
 
+// Upload multipart (M5-T3, ex. POST /uploads) : pas de Content-Type explicite
+// (le navigateur pose lui-même le boundary), sinon même comportement que
+// `request` (Bearer token, retry sur 401 via refresh).
+async function uploadRequest<T>(
+  path: string,
+  formData: FormData,
+  isRetry = false,
+): Promise<T> {
+  const token = getAccessToken();
+  const headers: HeadersInit = {};
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  const response = await fetch(`${API_URL}${path}`, { method: 'POST', headers, body: formData });
+
+  if (response.status === 401 && !isRetry) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      return uploadRequest<T>(path, formData, true);
+    }
+  }
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} on ${path}`);
+  }
+
+  return (await response.json()) as T;
+}
+
 export const http = {
   baseUrl: API_URL,
   get: <T>(path: string, options?: HttpRequestOptions) =>
@@ -99,4 +128,5 @@ export const http = {
     request<T>(path, { ...options, method: 'PATCH', body }),
   delete: <T>(path: string, options?: HttpRequestOptions) =>
     request<T>(path, { ...options, method: 'DELETE' }),
+  upload: <T>(path: string, formData: FormData) => uploadRequest<T>(path, formData),
 };
