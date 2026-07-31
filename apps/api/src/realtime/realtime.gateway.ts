@@ -1,7 +1,14 @@
 import { Logger } from '@nestjs/common';
-import { OnGatewayConnection, OnGatewayDisconnect, WebSocketGateway } from '@nestjs/websockets';
-import type { Socket } from 'socket.io';
+import {
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+  OnGatewayInit,
+  WebSocketGateway,
+  WebSocketServer,
+} from '@nestjs/websockets';
+import type { Server, Socket } from 'socket.io';
 import { PrismaService } from '../prisma/prisma.service';
+import { RealtimeEventsService } from './realtime-events.service';
 import { WsJwtGuard } from './ws-jwt.guard';
 
 export function channelRoom(channelId: string): string {
@@ -9,13 +16,21 @@ export function channelRoom(channelId: string): string {
 }
 
 @WebSocketGateway({ cors: true })
-export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
   private readonly logger = new Logger(RealtimeGateway.name);
+
+  @WebSocketServer()
+  private readonly server!: Server;
 
   constructor(
     private readonly wsJwtGuard: WsJwtGuard,
     private readonly prisma: PrismaService,
+    private readonly realtimeEventsService: RealtimeEventsService,
   ) {}
+
+  afterInit(server: Server): void {
+    this.realtimeEventsService.setServer(server);
+  }
 
   async handleConnection(client: Socket): Promise<void> {
     try {

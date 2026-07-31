@@ -3,6 +3,7 @@ jest.mock('../prisma/prisma.service', () => ({ PrismaService: class {} }));
 import { WsException } from '@nestjs/websockets';
 import type { Socket } from 'socket.io';
 import { channelRoom, RealtimeGateway } from './realtime.gateway';
+import type { RealtimeEventsService } from './realtime-events.service';
 import type { WsJwtGuard } from './ws-jwt.guard';
 
 function createSocket(): Socket & { join: jest.Mock; emit: jest.Mock; disconnect: jest.Mock } {
@@ -13,6 +14,10 @@ function createSocket(): Socket & { join: jest.Mock; emit: jest.Mock; disconnect
     emit: jest.fn(),
     disconnect: jest.fn(),
   } as unknown as Socket & { join: jest.Mock; emit: jest.Mock; disconnect: jest.Mock };
+}
+
+function createRealtimeEventsService(): RealtimeEventsService {
+  return { setServer: jest.fn() } as unknown as RealtimeEventsService;
 }
 
 describe('RealtimeGateway', () => {
@@ -26,6 +31,7 @@ describe('RealtimeGateway', () => {
           membership: { findMany },
           channel: { findMany },
         } as never,
+        createRealtimeEventsService(),
       );
       const socket = createSocket();
 
@@ -48,6 +54,7 @@ describe('RealtimeGateway', () => {
           membership: { findMany: membershipFindMany },
           channel: { findMany: channelFindMany },
         } as never,
+        createRealtimeEventsService(),
       );
       const socket = createSocket();
 
@@ -76,6 +83,7 @@ describe('RealtimeGateway', () => {
           membership: { findMany: membershipFindMany },
           channel: { findMany: channelFindMany },
         } as never,
+        createRealtimeEventsService(),
       );
       const socket = createSocket();
 
@@ -89,8 +97,28 @@ describe('RealtimeGateway', () => {
 
   describe('handleDisconnect', () => {
     it('ne lève pas — la déconnexion/sortie des rooms est gérée nativement par Socket.io', () => {
-      const gateway = new RealtimeGateway({} as unknown as WsJwtGuard, {} as never);
+      const gateway = new RealtimeGateway(
+        {} as unknown as WsJwtGuard,
+        {} as never,
+        createRealtimeEventsService(),
+      );
       expect(() => gateway.handleDisconnect(createSocket())).not.toThrow();
+    });
+  });
+
+  describe('afterInit', () => {
+    it("transmet l'instance Server à RealtimeEventsService (aucune autre logique)", () => {
+      const realtimeEventsService = createRealtimeEventsService();
+      const gateway = new RealtimeGateway(
+        {} as unknown as WsJwtGuard,
+        {} as never,
+        realtimeEventsService,
+      );
+      const server = { to: jest.fn() } as never;
+
+      gateway.afterInit(server);
+
+      expect(realtimeEventsService.setServer).toHaveBeenCalledWith(server);
     });
   });
 });
