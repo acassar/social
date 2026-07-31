@@ -229,6 +229,7 @@ et éventuellement une légende (colonne `body` réutilisée via `text_messages`
 - **Lecture des réactions existantes d'un post** (`GET`) — seuls `POST`/`DELETE` existent (M3-T2) ; le front (M3-T3) n'affiche donc les compteurs qu'à partir des événements temps réel reçus pendant la session, pas de l'historique.
 - **Pagination arrière** sur `GET /channels/:id/posts` (curseur "avant") — le curseur actuel (M3-T1) ne pagine qu'en avant (de la plus ancienne page vers le direct), impossible de remonter au-delà de la première page une fois tout l'historique chargé.
 - **Annuaire des membres d'un group** (nom affiché) — en son absence, le front (M3-T3) n'affiche que « Toi » ou un identifiant court pour les auteurs des messages.
+- **Édition d'une entrée `word_of_day`** — `PATCH /channels/:id/posts/:postId` (M3-T1) ne sait éditer que le `body` d'un post `text` ; un post `word_of_day` ne peut aujourd'hui qu'être créé ou supprimé (soft-delete, déjà générique). Éditer term/lang/translation/note sortirait du périmètre de M4-T1 (création uniquement).
 
 ---
 

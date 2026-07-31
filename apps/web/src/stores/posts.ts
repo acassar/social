@@ -5,6 +5,7 @@ import type {
   CreateTextPostRequestDto,
   PostCreatedEvent,
   PostDeletedEvent,
+  PostDto,
   PostUpdatedEvent,
   PostsPageDto,
   ReactionAddedEvent,
@@ -14,6 +15,10 @@ import type {
 } from '@social/shared';
 import { http } from '@/lib/http';
 import { useAuthStore } from '@/stores/auth';
+
+function isTextPost(post: PostDto): post is TextPostDto {
+  return post.type === 'text';
+}
 
 interface PostsState {
   channelId: string | null;
@@ -66,7 +71,9 @@ export const usePostsStore = defineStore('posts', {
         if (this.channelId !== channelId) {
           return;
         }
-        this.posts = page.posts;
+        // Cette vue ne rend que le salon `text` (M3-T3) ; les autres types de
+        // post (word_of_day, memes) auront leur propre vue (M4-T2, M5-T3).
+        this.posts = page.posts.filter(isTextPost);
         this.nextCursor = page.nextCursor;
       } catch {
         this.error = 'Impossible de charger les messages.';
@@ -87,7 +94,9 @@ export const usePostsStore = defineStore('posts', {
           return;
         }
         const existingIds = new Set(this.posts.map((post) => post.id));
-        this.posts.push(...page.posts.filter((post) => !existingIds.has(post.id)));
+        this.posts.push(
+          ...page.posts.filter(isTextPost).filter((post) => !existingIds.has(post.id)),
+        );
         this.nextCursor = page.nextCursor;
       } catch {
         this.error = 'Impossible de charger la suite des messages.';
@@ -128,7 +137,7 @@ export const usePostsStore = defineStore('posts', {
     },
 
     handlePostCreated(event: PostCreatedEvent): void {
-      if (event.post.channelId !== this.channelId) {
+      if (!isTextPost(event.post) || event.post.channelId !== this.channelId) {
         return;
       }
       if (this.posts.some((post) => post.id === event.post.id)) {
@@ -138,7 +147,7 @@ export const usePostsStore = defineStore('posts', {
     },
 
     handlePostUpdated(event: PostUpdatedEvent): void {
-      if (event.post.channelId !== this.channelId) {
+      if (!isTextPost(event.post) || event.post.channelId !== this.channelId) {
         return;
       }
       const index = this.posts.findIndex((post) => post.id === event.post.id);
