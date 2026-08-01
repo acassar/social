@@ -271,3 +271,25 @@ unique — membership du user, cohérent avec le MVP à un seul group actif,
 voir `doc/SPEC.md` §1) : c'est ce qui permet au shell de savoir quel group
 charger sans endpoint `GET /groups` dédié (hors périmètre M2-T4, CRUD des
 groups non implémenté).
+
+## Conteneurisation (M7-T1)
+
+```
+cp .env.example .env   # à remplir (secrets JWT, mot de passe Postgres, ...)
+docker compose -f docker-compose.prod.yml up --build -d
+```
+
+Lève `postgres` (volume nommé `postgres_data`) et `api` (image de prod,
+`apps/api/Dockerfile`) avec ses uploads sur un volume nommé
+(`uploads_data`). Au démarrage, le conteneur `api` applique les migrations
+Prisma en attente (`prisma migrate deploy`, voir
+`apps/api/docker-entrypoint.sh`) avant de lancer le serveur — pas d'étape
+manuelle séparée entre `up` et un schéma à jour.
+
+`apps/web/Dockerfile` construit le bundle statique de la PWA et le sert via
+nginx (image autonome, buildable/testable seule : `docker build -f
+apps/web/Dockerfile -t social-web .`) ; volontairement absent de
+`docker-compose.prod.yml`, ce service n'est pas branché sur le compose de
+prod — SPEC.md/BACKLOG.md décrivent le front servi par le reverse proxy
+existant du VPS, et le câblage exact (proxy → dist statique ou proxy →
+conteneur nginx) est le périmètre de M7-T2, pas de cette tâche.
