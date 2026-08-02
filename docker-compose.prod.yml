@@ -1,0 +1,53 @@
+# Stack de prod (M7-T1) : api + Postgres, chacun avec son volume nommé.
+# Le front (`apps/web/Dockerfile`, build statique) n'est volontairement pas
+# ici : SPEC.md/BACKLOG.md le décrivent servi par le reverse proxy existant
+# du VPS, pas par un conteneur — le câblage exact (proxy → dist statique ou
+# proxy → conteneur nginx) est le périmètre de M7-T2, pas de cette tâche.
+#
+# Usage : cp .env.example .env (à remplir), puis
+#   docker compose -f docker-compose.prod.yml up --build -d
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-30d}
+      UPLOADS_DIR: ./uploads
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@example.com}
+    ports:
+      - '${API_PORT:-3000}:3000'
+    volumes:
+      - uploads_data:/app/apps/api/uploads
+
+volumes:
+  postgres_data:
+  uploads_data:
