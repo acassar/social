@@ -1,0 +1,33 @@
+# Vhost du reverse proxy existant du VPS (M7-T2) pour le front — domaine
+# principal. TLS géré par le mécanisme déjà en place sur ce reverse proxy
+# (ex. certbot) : ce fichier ne fait que router en HTTPS vers le conteneur
+# `web` (docker-compose.prod.yml), pas de terminaison TLS ici.
+#
+# À adapter et déposer dans le vhost du reverse proxy existant
+# (ex. /etc/nginx/sites-available/ puis symlink sites-enabled/, ou
+# l'équivalent selon la conf déjà en place sur le VPS) — remplacer le
+# domaine et les chemins de certificats par ceux réellement utilisés.
+
+server {
+    listen 443 ssl http2;
+    server_name social.example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/social.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/social.example.com/privkey.pem;
+
+    # Sert le build statique de la PWA (conteneur `web`, image nginx de
+    # apps/web/Dockerfile, publiée sur ${WEB_PORT:-8080}).
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+server {
+    listen 80;
+    server_name social.example.com;
+    return 301 https://$host$request_uri;
+}

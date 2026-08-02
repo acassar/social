@@ -9,4 +9,5 @@ build/
 coverage/
 apps/api/uploads/*
 !apps/api/uploads/.gitkeep
+/data/uploads/
 apps/api/src/generated/

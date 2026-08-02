@@ -1,8 +1,14 @@
-# Stack de prod (M7-T1) : api + Postgres, chacun avec son volume nommé.
-# Le front (`apps/web/Dockerfile`, build statique) n'est volontairement pas
-# ici : SPEC.md/BACKLOG.md le décrivent servi par le reverse proxy existant
-# du VPS, pas par un conteneur — le câblage exact (proxy → dist statique ou
-# proxy → conteneur nginx) est le périmètre de M7-T2, pas de cette tâche.
+# Stack de prod : postgres + api + web (M7-T1), le tout derrière le reverse
+# proxy existant du VPS (M7-T2, voir doc/DEPLOY.md) qui gère TLS et route
+# vers les ports publiés ci-dessous. `web` sert le build statique de la PWA
+# via l'image nginx autonome de `apps/web/Dockerfile` (choix M7-T2 : conteneur
+# nginx plutôt que dist statique copié à la main sur l'hôte, pour rester
+# buildable/déployable de la même façon que `api`).
+#
+# Les uploads (`UPLOADS_HOST_DIR`) sont en bind mount, pas en volume nommé :
+# le reverse proxy (hors Docker, sur l'hôte) doit pouvoir servir ce même
+# dossier directement sous /uploads sans passer par le conteneur `api`
+# (cf. apps/api/.env.example UPLOADS_DIR et doc/DEPLOY.md).
 #
 # Usage : cp .env.example .env (à remplir), puis
 #   docker compose -f docker-compose.prod.yml up --build -d
@@ -46,8 +52,18 @@ services:
     ports:
       - '${API_PORT:-3000}:3000'
     volumes:
-      - uploads_data:/app/apps/api/uploads
+      - ${UPLOADS_HOST_DIR:-./data/uploads}:/app/apps/api/uploads
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+        VITE_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+    restart: unless-stopped
+    ports:
+      - '${WEB_PORT:-8080}:80'
 
 volumes:
   postgres_data:
-  uploads_data:
